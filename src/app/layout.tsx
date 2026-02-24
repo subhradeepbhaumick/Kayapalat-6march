@@ -3,7 +3,9 @@ import { Geist, Geist_Mono , Saira_Stencil_One, Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
 import ClientLayoutWrapper from "@/components/ClientLayoutWrapper";
-import { AuthProvider } from '@/contexts/AuthContext';
+import SessionWrapper from "@/components/SessionWrapper";
+
+
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -40,7 +42,7 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Abril+Fatface&display=swap" rel="stylesheet" />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <AuthProvider>
+        <SessionWrapper>
           <ClientLayoutWrapper>
             {children}
           </ClientLayoutWrapper>
@@ -55,7 +57,9 @@ export default function RootLayout({
               },
             }}
           />
-        </AuthProvider>
+        </SessionWrapper>
+
+
       </body>
     </html>
   );

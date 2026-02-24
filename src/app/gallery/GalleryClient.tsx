@@ -82,7 +82,7 @@ const ContactSection = ({ router }: { router: any }) => {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 md:gap-8 mb-8">
           {[
-            { icon: MapPin, title: "Visit Us", info: "179-A, Survey Park Rd, Purba Diganta, Santoshpur, Kolkata - 70075, WB, India", link: "https://www.google.com/maps/search/?api=1&query=179-A,+Survey+Park+Rd,+Purba+Diganta,+Santoshpur,+Kolkata+-+70075,+WB,+India" },
+            { icon: MapPin, title: "Visit Us", info: "179-A, Survey Park Rd, Purba Diganta, Santoshpur, Kolkata - 700075, WB, India", link: "https://www.google.com/maps/search/?api=1&query=179-A,+Survey+Park+Rd,+Purba+Diganta,+Santoshpur,+Kolkata+-+700075,+WB,+India" },
             { icon: Phone, title: "Call Us", info: "+91 602-602-602-6", link: "tel:+916026026026" },
             { icon: Mail, title: "Email Us", info: "info@kayapalat.co", link: "mailto:info@kayapalat.co" }
           ].map((contact, index) => (

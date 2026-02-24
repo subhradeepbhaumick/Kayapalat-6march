@@ -1,19 +1,22 @@
+// This file handles GET and PUT requests for Referuser & sales admin projects
 import { NextRequest, NextResponse } from 'next/server';
-import jwt from 'jsonwebtoken';
-import { pool } from '../../../../lib/db';
+import { getToken } from 'next-auth/jwt';
+import { executeQuery } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
-    const token = request.headers.get('authorization')?.replace('Bearer ', '');
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // --------------------------------------------------
+    // Auth Check
+    // --------------------------------------------------
+    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
+    if (!token || !token.user_id || (token.role !== 'sales_admin' && token.role !== 'superadmin' && token.role !== 'referuser')) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key') as { user_id: string };
-    const userId = decoded.user_id;
+    const userId = token.user_id;
 
     // Check if user is an agent
-    const [agentRows] = await pool.execute('SELECT agent_id FROM agents WHERE agent_id = ?', [userId]);
+    const [agentRows] = await executeQuery('SELECT agent_id FROM agents WHERE agent_id = ?', [userId]);
     const isAgent = (agentRows as any[]).length > 0;
 
     let query;
@@ -40,7 +43,7 @@ export async function GET(request: NextRequest) {
       params = [userId];
     }
 
-    const [rows] = await pool.execute(query, params);
+    const [rows] = await executeQuery(query, params);
 
     return NextResponse.json({ projects: rows });
   } catch (error) {
@@ -51,13 +54,15 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const token = request.headers.get('authorization')?.replace('Bearer ', '');
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // --------------------------------------------------
+    // Auth Check
+    // --------------------------------------------------
+    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
+    if (!token || !token.user_id || (token.role !== 'sales_admin' && token.role !== 'superadmin')) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key') as { user_id: string };
-    const adminId = decoded.user_id;
+    const adminId = token.user_id;
 
     const body = await request.json();
     const { appointment_id, updates } = body;
@@ -67,7 +72,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Verify the project belongs to the admin
-    const [projectRows] = await pool.execute(
+    const [projectRows] = await executeQuery(
       'SELECT * FROM projects WHERE appointment_id = ? AND admin_id = ?',
       [appointment_id, adminId]
     );
@@ -98,6 +103,8 @@ export async function PUT(request: NextRequest) {
     if (updates.booking_status !== undefined) fields.push('booking_status = ?'), values.push(updates.booking_status);
     if (updates.booking_id !== undefined) fields.push('booking_id = ?'), values.push(updates.booking_id);
     if (updates.booked_in_next !== undefined) fields.push('bookedInNext = ?'), values.push(updates.booked_in_next);
+    if (updates.client_name !== undefined) fields.push('client_name = ?'), values.push(updates.client_name);
+    if (updates.client_phone !== undefined) fields.push('client_phone = ?'), values.push(updates.client_phone);
 
     if (fields.length === 0) {
       return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 });
@@ -123,20 +130,20 @@ export async function PUT(request: NextRequest) {
     const updateQuery = `UPDATE projects SET ${fields.join(', ')} WHERE appointment_id = ?`;
     values.push(appointment_id);
 
-    await pool.execute(updateQuery, values);
+    await executeQuery(updateQuery, values);
 
     // After updating, check if the project has agent_id and ensure the lead exists in leads table
-    const [updatedProject] = await pool.execute('SELECT * FROM projects WHERE appointment_id = ?', [appointment_id]);
+    const [updatedProject] = await executeQuery('SELECT * FROM projects WHERE appointment_id = ?', [appointment_id]);
     const updatedProjectData = (updatedProject as any[])[0];
 
     if (updatedProjectData.agent_id) {
       // Get admin_id from agents table
-      const [agentRow] = await pool.execute('SELECT admin_id FROM agents WHERE agent_id = ?', [updatedProjectData.agent_id]);
+      const [agentRow] = await executeQuery('SELECT admin_id FROM agents WHERE agent_id = ?', [updatedProjectData.agent_id]);
       const admin_id = (agentRow as any[])[0]?.admin_id;
 
       if (admin_id) {
         // Check if lead exists in leads table
-        const [leadRow] = await pool.execute('SELECT lead_id FROM leads WHERE lead_id = ?', [updatedProjectData.lead_id]);
+        const [leadRow] = await executeQuery('SELECT lead_id FROM leads WHERE lead_id = ?', [updatedProjectData.lead_id]);
         if ((leadRow as any[]).length === 0) {
           // Insert into leads table
           const insertLeadsQuery = `
@@ -145,7 +152,7 @@ export async function PUT(request: NextRequest) {
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `;
           const today = new Date().toISOString().slice(0, 10);
-          await pool.execute(insertLeadsQuery, [
+          await executeQuery(insertLeadsQuery, [
             updatedProjectData.lead_id,
             admin_id,
             updatedProjectData.client_name || '',

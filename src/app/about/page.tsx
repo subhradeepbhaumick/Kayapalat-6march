@@ -84,7 +84,7 @@ const InfiniteCarousel = ({ items, direction = "left" }: { items: { name: string
         {/* Duplicate items to create seamless loop */}
         {[...items, ...items].map((item, index) => (
           <div key={index} className="flex-shrink-0 w-40 h-20 bg-white rounded-lg shadow-md p-4 flex flex-col items-center justify-center border border-gray-200 mx-4"> {/* Added horizontal margin */}
-            <Image src={item.logo} alt={item.name} width={80} height={40} objectFit="contain" className="mb-1" />
+            <Image src={item.logo} alt={item.name} width={80} height={40} objectFit="contain" className="mb-1" onError={(e) => console.log(`Failed to load brand logo: ${item.logo} - ${e.type}`)} />
             <span className="text-xs font-semibold text-gray-700">{item.name}</span>
           </div>
         ))}
@@ -136,7 +136,7 @@ const DesignerCard = ({ designer }: { designer: any }) => {
         {/* Designer Avatar and Name Overlay */}
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent flex items-end p-4">
           <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white mr-3 flex-shrink-0">
-            <Image src={designer.image} alt={designer.name} width={48} height={48} objectFit="cover" />
+            <Image src={designer.image} alt={designer.name} width={48} height={48} objectFit="cover" onError={(e) => console.log(`Failed to load designer image: ${designer.image} - ${e.type}`)} />
           </div>
           <h3 className="text-xl font-bold text-white leading-tight">{designer.name}</h3>
         </div>
@@ -261,7 +261,7 @@ const TestimonialsCarousel = ({ testimonials }: { testimonials: any[] }) => {
                   <div className="flex items-center mb-4">
                     <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center mr-4 overflow-hidden">
                       {testimonial.image ? (
-                        <Image src={testimonial.image} alt={testimonial.name} width={48} height={48} objectFit="cover" />
+                        <Image src={testimonial.image} alt={testimonial.name} width={48} height={48} objectFit="cover" onError={(e) => console.log(`Failed to load testimonial image: ${testimonial.image} - ${e.type}`)} />
                       ) : (
                         <User className="w-6 h-6 text-gray-600" />
                       )}
@@ -780,7 +780,7 @@ export default function AboutUsPage() {
           >
             <div>
               <div className="relative z-10 text-center ">
-                <Image src="/founder.jpg" alt="JohnBor ( Founder & CEO )" width={350} height={350} className=" rounded-full max-h-[350px] max-w-[350px] mx-auto mb-4 object-cover  shadow-lg border-4 border-white" />
+            <Image src="/founder.jpg" alt="JohnBor ( Founder & CEO )" width={350} height={350} className=" rounded-full max-h-[350px] max-w-[350px] mx-auto mb-4 object-cover  shadow-lg border-4 border-white" onError={(e) => console.log(`Failed to load founder image: /founder.jpg - ${e.type}`)} />
                 <h3 className="text-lg md:text-xl font-bold text-gray-900">John Bor</h3>
                 <p className="text-gray-600" style={{ fontFamily: "'Abril Fatface', cursive" }}>Founder & CEO</p>
               </div>
@@ -994,13 +994,14 @@ export default function AboutUsPage() {
           whileInView={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.8 }}
         >
-          <Image
-            src={isMobile ? "/how-we-work-mobile.png" : "/how-we-work.png"}
-            alt="How It Works"
-            width={1200}
-            height={800}
-            className="rounded-2xl mx-auto"
-          />
+            <Image
+              src={isMobile ? "/how-we-work-mobile.png" : "/how-we-work.png"}
+              alt="How It Works"
+              width={1200}
+              height={800}
+              className="rounded-2xl mx-auto"
+              onError={(e) => console.log(`Failed to load how-we-work image: ${isMobile ? "/how-we-work-mobile.png" : "/how-we-work.png"} - ${e.type}`)}
+            />
         </motion.div>
       </section>
 
@@ -1268,8 +1269,8 @@ export default function AboutUsPage() {
               {
                 icon: MapPin,
                 title: "Visit Us",
-                info: "179-A, Survey Park Rd, Purba Diganta, Santoshpur, Kolkata - 70075, WB, India",
-                link: "https://www.google.com/maps/search/?api=1&query=179-A,+Survey+Park+Rd,+Purba+Diganta,+Santoshpur,+Kolkata+-+70075,+WB,+India"
+                info: "179-A, Survey Park Rd, Purba Diganta, Santoshpur, Kolkata - 700075, WB, India",
+                link: "https://www.google.com/maps/search/?api=1&query=179-A,+Survey+Park+Rd,+Purba+Diganta,+Santoshpur,+Kolkata+-+700075,+WB,+India"
               },
               {
                 icon: Phone,

@@ -41,7 +41,7 @@ const emptyFormData: GalleryImageData = {
     is_featured: false, likes: 0,
     designer_name: 'Team KayaPalat',
     designer_designation: 'Designer | Architect',
-    designer_dp_path: '/user.png',
+    designer_dp_path: null,
     designer_comment: '',
 };
 

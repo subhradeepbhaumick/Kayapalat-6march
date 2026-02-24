@@ -35,21 +35,20 @@ export async function executeQuery<T = any>(
     const upperCaseQuery = query.toUpperCase();
     const trimmedQuery = upperCaseQuery.trim().replace(/;$/, '');
 
+    const isSelect = trimmedQuery.startsWith('SELECT');
     const isTransactionCommand = ['START TRANSACTION', 'COMMIT', 'ROLLBACK'].includes(trimmedQuery);
     const isBulkInsert = upperCaseQuery.includes('VALUES ?');
-    const hasLimitOffset = /\b(LIMIT|OFFSET)\s+\?/i.test(query);
 
     // ✅ Ensure params are safe
     const safeParams = params.map(p => (typeof p === "boolean" ? Number(p) : p));
 
-    // Use .query() if transaction, bulk insert, or LIMIT/OFFSET placeholders
-    if (isTransactionCommand || isBulkInsert || hasLimitOffset) {
-      const [results, fields] = await connection.query(query, safeParams);
-      return [results as T[], fields as unknown as mysql.OkPacket];
+    let results, fields;
+    if (isSelect || isTransactionCommand || isBulkInsert) {
+      [results, fields] = await connection.query(query, safeParams);
     } else {
-      const [results, fields] = await connection.execute(query, safeParams);
-      return [results as T[], fields as unknown as mysql.OkPacket];
+      [results, fields] = await connection.execute(query, safeParams);
     }
+    return [results as T[], fields as unknown as mysql.OkPacket];
   } catch (error: any) {
     console.error('Database query error:', {
       message: error.message,

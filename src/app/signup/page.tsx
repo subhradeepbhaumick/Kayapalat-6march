@@ -27,6 +27,7 @@ export default function SignupPage() {
     const [termsAccepted, setTermsAccepted] = useState(false);
     const [isTermsLoading, setIsTermsLoading] = useState(false);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    
 
     // Error states for validations
     const [emailError, setEmailError] = useState("");
@@ -41,6 +42,11 @@ export default function SignupPage() {
     const options = [
         { value: "", label: "Select your role", icon: null },
         { value: "referuser", label: "Refer & Earn Partner", icon: (
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+        )},
+        { value: "businessBrand", label: "Manufacturer", icon: (
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
             </svg>
@@ -81,9 +87,9 @@ useEffect(() => {
         user.password.length >= 6 &&
         user.phone.match(phonePattern) &&
         user.email.match(emailPattern) &&
-        user.wp &&
-        user.address &&
-        user.occupation &&
+        // user.wp &&
+        // user.address &&
+        // user.occupation &&
         !passwordMismatch &&
         !passwordTooShort &&
         termsAccepted &&
@@ -314,7 +320,7 @@ useEffect(() => {
                     {phoneError && <p className="text-red-500 text-sm mb-4">{phoneError}</p>}
                     {/* wp Number */}
                     <label htmlFor="phone" className="mb-1 text-sm text-gray-700">
-                        Whatsapp Number <span className="text-red-500">*</span>
+                        Whatsapp Number 
                     </label>
                     <input
                         className={`p-3 border ${wpError ? "border-red-500" : "border-gray-300"} rounded-lg mb-4 bg-white text-black focus:outline-none focus:border-teal-500`}
@@ -330,7 +336,7 @@ useEffect(() => {
                     {wpError && <p className="text-red-500 text-sm mb-4">{wpError}</p>}
                     {/* Occupation */}
                     <label htmlFor="occupation" className="mb-1 text-sm text-gray-700">
-                        Occupation <span className="text-red-500">*</span>
+                        Occupation 
                     </label>
                     <input
                         className="p-3 border border-gray-300 rounded-lg mb-4 bg-white text-black focus:outline-none focus:border-teal-500"
@@ -342,7 +348,7 @@ useEffect(() => {
                     />
                     {/* address */}
                     <label htmlFor="address" className="mb-1 text-sm text-gray-700">
-                        Address <span className="text-red-500">*</span>
+                        Address 
                     </label>
                     <input
                         className="p-3 border border-gray-300 rounded-lg mb-4 bg-white text-black focus:outline-none focus:border-teal-500"

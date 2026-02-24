@@ -1,23 +1,19 @@
-import { NextResponse } from "next/server";
-import jwt from "jsonwebtoken";
+import { NextRequest, NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
 import { executeQuery } from "@/lib/db";
 import fs from "fs";
 import path from "path";
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const authHeader = request.headers.get("authorization");
-    const token = authHeader?.startsWith("Bearer ") ? authHeader.substring(7) : null;
-
+    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
     if (!token) {
       return NextResponse.json(
         { success: false, error: "Unauthorized: Missing token" },
         { status: 401 }
       );
     }
-
-    const decoded: any = jwt.verify(token, process.env.JWT_SECRET!);
-    const agent_id = decoded.user_id;
+    const agent_id = token.user_id as string;
 
     if (!agent_id) {
       return NextResponse.json(
@@ -131,20 +127,16 @@ export async function POST(request: Request) {
   }
 }
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get("authorization");
-    const token = authHeader?.startsWith("Bearer ") ? authHeader.substring(7) : null;
-
+    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
     if (!token) {
       return NextResponse.json(
         { success: false, error: "Unauthorized: Missing token" },
         { status: 401 }
       );
     }
-
-    const decoded: any = jwt.verify(token, process.env.JWT_SECRET!);
-    const agent_id = decoded.user_id;
+    const agent_id = token.user_id as string;
 
     if (!agent_id) {
       return NextResponse.json(
@@ -189,20 +181,16 @@ export async function GET(request: Request) {
   }
 }
 
-export async function PUT(request: Request) {
+export async function PUT(request: NextRequest) {
   try {
-    const authHeader = request.headers.get("authorization");
-    const token = authHeader?.startsWith("Bearer ") ? authHeader.substring(7) : null;
-
+    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
     if (!token) {
       return NextResponse.json(
         { success: false, error: "Unauthorized: Missing token" },
         { status: 401 }
       );
     }
-
-    const decoded: any = jwt.verify(token, process.env.JWT_SECRET!);
-    const agent_id = decoded.user_id;
+    const agent_id = token.user_id as string;
 
     if (!agent_id) {
       return NextResponse.json(

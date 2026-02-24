@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { Upload } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useSession } from "next-auth/react";
 
 interface FormDataType {
   agent_id: string;
@@ -14,10 +14,10 @@ interface FormDataType {
 }
 
 const BankDetailsPage: React.FC = () => {
-  const { user } = useAuth();
+  const { data: session } = useSession();
 
   const initialFormData: FormDataType = {
-    agent_id: user?.user_id || "",
+    agent_id: session?.user?.user_id || session?.user?.id || "",
     accountHolderName: "",
     upiId: "",
     bankName: "",
@@ -33,33 +33,28 @@ const BankDetailsPage: React.FC = () => {
   const [submittedData, setSubmittedData] = useState<FormDataType | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
 
   // Update agent_id when user changes
   useEffect(() => {
-    setFormData((prev) => ({ ...prev, agent_id: user?.user_id || "" }));
-  }, [user]);
+    setFormData((prev) => ({ ...prev, agent_id: session?.user?.user_id || session?.user?.id || "" }));
+  }, [session]);
 
   // Fetch existing bank details on component mount
   useEffect(() => {
     const fetchBankDetails = async () => {
-      if (!user?.user_id) {
+      if (!session?.user?.user_id && !session?.user?.id) {
         setLoading(false);
         return;
       }
 
       try {
-        const token = localStorage.getItem("token");
-        if (!token) {
-          setLoading(false);
-          return;
-        }
-
         const res = await fetch("/api/referuser/bank-details", {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`,
           },
+          credentials: 'include',
         });
 
         if (res.ok) {
@@ -93,7 +88,7 @@ const BankDetailsPage: React.FC = () => {
     };
 
     fetchBankDetails();
-  }, [user]);
+  }, [session]);
 
   // Handle text inputs
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -115,13 +110,13 @@ const BankDetailsPage: React.FC = () => {
 };
 
   // Submit form
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-  if (!user?.user_id) {
-    alert("You must be logged in to submit bank details.");
-    return;
-  }
+    if (!session?.user?.user_id && !session?.user?.id) {
+      alert("You must be logged in to submit bank details.");
+      return;
+    }
 
   // Validation
   if (
@@ -151,12 +146,9 @@ const handleSubmit = async (e: React.FormEvent) => {
       fd.append("upiQr", selectedFile);
     }
 
-    const token = localStorage.getItem("token");
     const res = await fetch("/api/referuser/bank-details", {
       method: "POST",
-      headers: {
-        "Authorization": `Bearer ${token}`,
-      },
+      credentials: 'include',
       body: fd, // NO headers needed — browser handles it
     });
 
@@ -176,14 +168,14 @@ const handleSubmit = async (e: React.FormEvent) => {
 
 
   const handleReset = () => {
-    setFormData({ ...initialFormData, agent_id: user?.user_id || "" });
+    setFormData({ ...initialFormData, agent_id: session?.user?.user_id || session?.user?.id || "" });
     setSubmittedData(null);
   };
 
   // Keep form keys consistent
   useEffect(() => {
     setFormData((prev) => ({ ...initialFormData, ...prev }));
-  }, [selectedType]);
+  }, [selectedType, session]);
 
   const displayData = submittedData ?? formData;
 
@@ -321,7 +313,7 @@ const handleSubmit = async (e: React.FormEvent) => {
         <div className="flex justify-center gap-4 mt-6">
           <button
             type="submit"
-            disabled={!user?.user_id}
+            disabled={!session?.user?.user_id && !session?.user?.id}
             className="bg-green-900 text-white px-6 py-2 rounded-md hover:bg-green-700 transition"
           >
             Submit
@@ -376,23 +368,29 @@ const handleSubmit = async (e: React.FormEvent) => {
                 </td>
                 <td className="px-4 py-2 border italic text-gray-500">
                   {displayData.upiQr ? (
-                    <a
-                      href={displayData.upiQr}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <button
+                      onClick={() => setIsQrModalOpen(true)}
                       className="text-blue-600 underline"
                     >
                       View
-                    </a>
+                    </button>
                   ) : (
                     "null"
                   )}
                 </td>
               </tr>
             </tbody>
-          </table>
-        </div>
+        </table>
       </div>
+      {isQrModalOpen && (
+        <div className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-4 rounded-lg max-w-sm w-full">
+            <img src={displayData.upiQr} alt="UPI QR Code" className="w-full h-auto" />
+            <button onClick={() => setIsQrModalOpen(false)} className="mt-4 bg-red-500 text-white px-4 py-2 rounded">Close</button>
+          </div>
+        </div>
+      )}
+    </div>
     </div>
   );
 };

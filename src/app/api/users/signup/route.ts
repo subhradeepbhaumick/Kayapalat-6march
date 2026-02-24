@@ -193,7 +193,7 @@ export async function POST(req: NextRequest) {
 
     if (existing.length > 0) {
       return NextResponse.json(
-        { error: "❗ User already exists." },
+        { message: "Email is already in our database. Kindly use another regular email id" },
         { status: 400 }
       );
     }
@@ -215,6 +215,7 @@ export async function POST(req: NextRequest) {
     if (role === "designer") prefix = "D";
     if (role === "sales_admin") prefix = "S";
     if (role === "superadmin") prefix = "O";
+    if (role === "businessBrand") prefix = "B";
 
 
     const user_id = await generateUserId(prefix);
@@ -222,80 +223,86 @@ export async function POST(req: NextRequest) {
     // const fullName = `full_name`;
 
     // -------------------------------
-    // 5. INSERT USER
+    // 5. INSERT USER WITH TRANSACTION
     // -------------------------------
 
-    const insertQuery = `
-      INSERT INTO users_kp_db
-      (user_id, name, email, phone, whatsapp, password_hash, occupation, address, role, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-    `;
+    console.log("🔄 Starting database transaction for user:", user_id);
 
-    const params = [
-      user_id,
-      full_name,
-      email,
-      phone,
-      whatsapp || null,
-      hashedPassword,
-      occupation || null,
-      address || null,
-      role
-    ];
+    const { pool } = require('@/lib/db');
+    const connection = await pool.getConnection();
 
-    await executeQuery(insertQuery, params);
+    try {
+      await connection.query('START TRANSACTION');
+      console.log("🔄 Transaction started");
 
-    // -------------------------------
-    // 6. SEND EMAIL VERIFICATION
-    // -------------------------------
-    // await sendEmail({ email, emailType: "VERIFY", userId: user_id });
-    // // 2️⃣ If role is referuser → also insert into agents table
-    // if (role === "referuser") {
-    //   try {
-    //     await executeQuery(
-    //       `
-    //         INSERT INTO agents (agent_id, admin_id, agent_name, phone, email,profile_pic, created_at)
-    //         VALUES (?, ?, ?, ?, ?, ?, NOW())`,
-    //       [
-    //         user_id,  // agent_id: same as user_id
-    //         admin_id || null,    // admin_id — optional
-    //         full_name,
-    //         phone,
-    //         email,
-    //         null      // profile_pic initially null
-    //       ]
-    //     );
-    //   } catch (error) {
-    //     console.error("Error inserting into agents table:", error);
-    //   }
-    // }
-    // // 3️⃣ If role is client → also insert into clients table
-    // if (role === "client") {
-    //   try {
-    //     await executeQuery(
-    //       `
-    //         INSERT INTO leads (lead_id, admin_id, client_name, client_phone, email, created_at)
-    //         VALUES (?, ?, ?, ?, ?, NOW())`,
-    //       [
-    //         user_id,      // client_id: same as user_id
-    //         admin_id || null,        // admin_id — optional (use admin_id from request, or null)
-    //         full_name,
-    //         phone,
-    //         email
-    //       ]
-    //     );
-    //   } catch (error) {
-    //     console.error("Error inserting into leads table:", error);
-    //   }
-    // }
-     // If user is referuser → also insert into agents table
-    if (role === "referuser") {
-      await executeQuery(
-        `INSERT INTO agents 
-        (agent_id, admin_id, agent_name, phone,whatsapp,address,password_hash,occupation, email, profile_pic)
-        VALUES (?, NULL, ?, ?, ?,?,?,?,?, NULL)`,
-        [user_id, full_name, phone,whatsapp,address,password,occupation, email]
-      );
+      // Insert into users_kp_db
+      const insertQuery = `
+        INSERT INTO users_kp_db
+        (user_id, name, email, phone, whatsapp, password_hash, occupation, address, role, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+      `;
+
+      const params = [
+        user_id,
+        full_name,
+        email,
+        phone,
+        whatsapp || null,
+        hashedPassword,
+        occupation || null,
+        address || null,
+        role
+      ];
+
+      console.log("🔄 Executing users_kp_db insert with params:", params);
+      const [usersResult] = await connection.execute(insertQuery, params);
+      console.log("✅ Inserted into users_kp_db:", user_id, "Result:", usersResult);
+
+      // If user is referuser → also insert into agents table
+      if (role === "referuser") {
+        const agentsQuery = `
+          INSERT INTO agents
+          (agent_id, admin_id, agent_name, phone, whatsapp, address, password_hash, occupation, email, profile_pic)
+          VALUES (?, "S1", ?, ?, ?, ?, ?, ?, ?, NULL)
+        `;
+        const agentsParams = [user_id, full_name, phone, whatsapp, address, hashedPassword, occupation, email];
+
+        console.log("🔄 Executing agents insert with params:", agentsParams);
+        const [agentsResult] = await connection.execute(agentsQuery, agentsParams);
+        console.log("✅ Inserted into agents table:", user_id, "Result:", agentsResult);
+      }
+
+      // If user is businessBrand → also insert into manufacturer table
+      if (role === "businessBrand") {
+        const manufacturerQuery = `
+          INSERT INTO manufacturer
+          (dealer_id, company_logo, user_name, phone, whatsapp, email, company_name, owner_name, address, gstin, pan, tan, password_hash, created_at)
+          VALUES (?, NULL, ?, ?, ?, ?, NULL, NULL, ?, NULL, NULL, NULL, ?, NOW())
+        `;
+        const manufacturerParams = [user_id, full_name, phone, whatsapp, email, address, hashedPassword];
+
+        console.log("🔄 Executing manufacturer insert with params:", manufacturerParams);
+        const [manufacturerResult] = await connection.execute(manufacturerQuery, manufacturerParams);
+        console.log("✅ Inserted into manufacturer table:", user_id, "Result:", manufacturerResult);
+      }
+
+      await connection.query('COMMIT');
+      console.log("✅ Transaction committed successfully for user:", user_id);
+
+    } catch (error: any) {
+      await connection.query('ROLLBACK');
+      console.error("❌ Transaction rolled back for user:", user_id, "Error:", {
+        message: error.message,
+        code: error.code,
+        errno: error.errno,
+        sqlState: error.sqlState,
+        sqlMessage: error.sqlMessage,
+        stack: error.stack
+      });
+      throw error; // Re-throw to be caught by outer catch
+    } finally {
+      connection.release();
+      console.log("🔄 Database connection released");
     }
     
     return NextResponse.json(

@@ -95,7 +95,17 @@ const countryOptions = [
 
 // --- (Part 2: Reusable Combobox Component) ---
 
-const Combobox = ({ options, value, onValueChange, placeholder, searchTerm, onSearchTermChange, className }) => {
+interface ComboboxProps {
+  options: { value: string; label: string }[];
+  value: string;
+  onValueChange: (value: string) => void;
+  placeholder: string;
+  searchTerm: string;
+  onSearchTermChange: (term: string) => void;
+  className?: string;
+}
+
+const Combobox: FC<ComboboxProps> = ({ options, value, onValueChange, placeholder, searchTerm, onSearchTermChange, className }) => {
   const [isOpen, setIsOpen] = useState(false);
   const comboboxRef = useRef(null);
   const displayLabel = options.find((option) => option.value === value)?.label || placeholder;
@@ -167,7 +177,22 @@ const ContactInfoModal: FC<ContactInfoModalProps> = ({
   // State for validation and submission logic
   const [isValid, setIsValid] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [emailError, setEmailError] = useState('');
+
+  // OTP states
+  const [phoneOtp, setPhoneOtp] = useState('');
+  const [phoneVerified, setPhoneVerified] = useState(false);
+  const [phoneOtpSent, setPhoneOtpSent] = useState(false);
+  const [phoneResendTimer, setPhoneResendTimer] = useState(0);
+  const [sendingPhoneOtp, setSendingPhoneOtp] = useState(false);
+  const [verifyingPhoneOtp, setVerifyingPhoneOtp] = useState(false);
+
+  // Timer effect for resend OTP
+  useEffect(() => {
+    if (phoneResendTimer > 0) {
+      const timer = setTimeout(() => setPhoneResendTimer(phoneResendTimer - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [phoneResendTimer]);
 
   // Real-time validation effect
   useEffect(() => {
@@ -175,18 +200,62 @@ const ContactInfoModal: FC<ContactInfoModalProps> = ({
       const isNameValid = name.trim().length > 0;
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       const isEmailValid = emailRegex.test(email);
-      setEmailError(email.length > 0 && !isEmailValid ? 'Please enter a valid email.' : '');
-      const isPhoneValid = /^\d{10}$/.test(phone);
+      const isPhoneValid = /^\d{10}$/.test(phone) && phoneVerified;
       const isWhatsappValid = whatsappSameAsPhone || /^\d{10}$/.test(whatsappNumber);
       return isNameValid && isEmailValid && isPhoneValid && isWhatsappValid;
     };
     setIsValid(validateForm());
-  }, [name, email, phone, whatsappSameAsPhone, whatsappNumber]);
+  }, [name, email, phone, whatsappSameAsPhone, whatsappNumber, phoneVerified]);
+
+  const sendPhoneOtp = async () => {
+    if (!phone || !/^\d{10}$/.test(phone)) {
+      toast.error("Please enter a valid 10-digit phone number first.");
+      return;
+    }
+    setSendingPhoneOtp(true);
+    try {
+      const response = await fetch('/api/send-otp-phone', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: `${countryCode}${phone}` }),
+      });
+      if (!response.ok) throw new Error('Failed to send OTP');
+      setPhoneOtpSent(true);
+      setPhoneResendTimer(60);
+      toast.success("OTP sent to your phone!");
+    } catch (error) {
+      toast.error("Failed to send OTP. Please try again.");
+    } finally {
+      setSendingPhoneOtp(false);
+    }
+  };
+
+  const verifyPhoneOtp = async () => {
+    if (!phoneOtp || phoneOtp.length !== 6) {
+      toast.error("Please enter a valid 6-digit OTP.");
+      return;
+    }
+    setVerifyingPhoneOtp(true);
+    try {
+      const response = await fetch('/api/verify-otp-phone', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: `${countryCode}${phone}`, otp: phoneOtp }),
+      });
+      if (!response.ok) throw new Error('Invalid OTP');
+      setPhoneVerified(true);
+      toast.success("Phone verified successfully!");
+    } catch (error) {
+      toast.error("Invalid OTP. Please try again.");
+    } finally {
+      setVerifyingPhoneOtp(false);
+    }
+  };
 
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!isValid || isSubmitting) {
-      toast.error("Please fill all required fields correctly to proceed.");
+      toast.error("Please fill all required fields correctly and ensure phone verification is complete.");
       return;
     }
     setIsSubmitting(true);
@@ -243,9 +312,10 @@ const ContactInfoModal: FC<ContactInfoModalProps> = ({
         <label className="block text-gray-700 mb-2">Email Address *</label>
         <div className="relative">
           <FaEnvelope className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${emailError ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-[#00423D]'}`} />
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 border-gray-300 focus:ring-[#00423D]" />
         </div>
-        {emailError && <p className="text-red-500 text-sm mt-1">{emailError}</p>}
+        
+       
       </div>
 
       {/* Phone with Country Code */}
@@ -254,6 +324,37 @@ const ContactInfoModal: FC<ContactInfoModalProps> = ({
         <div className="flex gap-2">
           <Combobox options={countryOptions} value={countryCode} onValueChange={setCountryCode} placeholder="Country" className="w-1/3" searchTerm={countrySearchTerm} onSearchTermChange={setCountrySearchTerm} />
           <input type="text" placeholder="Phone (10 digits) *" value={phone} onChange={(e) => setPhone(e.target.value)} className="p-3 border border-gray-300 rounded-lg w-2/3 focus:outline-none focus:ring-2 focus:ring-[#295A47]" />
+        </div>
+        <div className="flex gap-2 mt-2">
+          <button
+            type="button"
+            onClick={sendPhoneOtp}
+            disabled={sendingPhoneOtp || phoneResendTimer > 0 || !phone || !/^\d{10}$/.test(phone)}
+            className="px-4 py-2 bg-blue-500 text-white rounded-lg disabled:bg-gray-400 disabled:cursor-not-allowed"
+          >
+            {sendingPhoneOtp ? 'Sending...' : phoneResendTimer > 0 ? `Resend in ${phoneResendTimer}s` : 'Send OTP'}
+          </button>
+          {phoneOtpSent && !phoneVerified && (
+            <>
+              <input
+                type="text"
+                placeholder="Enter 6-digit OTP"
+                value={phoneOtp}
+                onChange={(e) => setPhoneOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                className="px-4 py-2 border rounded-lg flex-1"
+                maxLength={6}
+              />
+              <button
+                type="button"
+                onClick={verifyPhoneOtp}
+                disabled={verifyingPhoneOtp || phoneOtp.length !== 6}
+                className="px-4 py-2 bg-green-500 text-white rounded-lg disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                {verifyingPhoneOtp ? 'Verifying...' : 'Verify'}
+              </button>
+            </>
+          )}
+          {phoneVerified && <span className="text-green-600 font-medium">✓ Verified</span>}
         </div>
       </div>
 

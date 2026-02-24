@@ -124,13 +124,21 @@ export async function POST(req: NextRequest) {
       expiresIn: "1d",
     });
 
-    // Return token in JSON for localStorage only
-    return NextResponse.json({
+    // Set token in httpOnly cookie
+    const res = NextResponse.json({
       success: true,
       message: "Login successful",
-      token,
-      user: payload
+      user: payload,
+      token: token
     });
+    res.cookies.set('token', token, {
+      httpOnly: true,
+      path: '/',
+      maxAge: 86400, // 1 day
+      sameSite: 'lax'
+    });
+
+    return res;
 
   } catch (error: any) {
     console.error("Login error:", error);

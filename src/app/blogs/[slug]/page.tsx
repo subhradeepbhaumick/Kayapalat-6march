@@ -6,14 +6,19 @@ import Link from 'next/link';
 import React from 'react';
 import { formatDate, calculateReadTime } from '@/lib/utils';
 import {
-  Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator
+  Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbSeparator
 } from "@/components/ui/breadcrumb";
 import { ScrollToTopButton } from './ScrollToTopButton'; // NEW: Import ScrollToTopButton
 import { Tag, Folder } from 'lucide-react'; // NEW: Import icons
 import { BlogHeroSection } from './BlogHeroSection'; // NEW: Import BlogHeroSection
+import { ClearPerformanceMarks } from '@/components/ClearPerformanceMarks'; // Import to clear performance marks
+import { pool, executeQuery } from '@/lib/db';
 
 
-const BackgroundPattern = ({ color = '#00423D', opacity = 0.05 }) => {
+const BackgroundPattern = ({
+  color = '#00423D',
+  opacity = 0.05,
+}: { color?: string; opacity?: number }) => {
   const encodedColor = encodeURIComponent(color);
   const svgUrl = `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='${encodedColor}' fill-opacity='${opacity}'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`;
   return <div className="absolute  inset-0 z-0 pointer-events-none" style={{ backgroundImage: svgUrl }}></div>;
@@ -43,18 +48,67 @@ interface SimilarBlog {
 }
 
 // --- DATA FETCHING ---
-async function getBlog(slug: string): Promise<Blog> {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/blogs/${slug}`, { cache: 'no-store' });
-  if (!res.ok) notFound();
-  return res.json();
+async function getBlog(slug: string): Promise<Blog | null> {
+  try {
+    const trimmedSlug = slug.trim();
+    // Query 1: Get the main blog details
+    const blogQuery = `
+      SELECT nb.*, bc.name AS category_name
+      FROM new_blogs nb
+      LEFT JOIN blog_categories bc ON nb.category_id = bc.id
+      WHERE TRIM(nb.slug) = ? AND nb.status = 'published' AND nb.deleted_at IS NULL;
+    `;
+    const [blogs]: any[] = await executeQuery(blogQuery, [trimmedSlug]);
+
+    if (blogs.length === 0) {
+      notFound(); // real 404 only
+    }
+
+    const blog = blogs[0];
+
+    // Query 2: Get all associated tag IDs
+    const tagLinksQuery = 'SELECT tag_id FROM blog_tag_link WHERE blog_id = ?';
+    const [tagLinks]: any[] = await executeQuery(tagLinksQuery, [blog.id]);
+    const tagIds = tagLinks.map((link: { tag_id: number }) => link.tag_id);
+
+    // --- THIS IS THE CORRECTED LOGIC ---
+    try {
+      if (tagIds.length > 0) {
+        // 1. Create the correct number of '?' placeholders
+        const placeholders = tagIds.map(() => '?').join(',');
+        // 2. Build the query with the placeholders
+        const tagsQuery = `SELECT id, name, slug FROM blog_tags WHERE id IN (${placeholders})`;
+        // 3. Execute the query with the flat array of IDs
+        const [tags] = await executeQuery(tagsQuery, tagIds);
+        blog.tags = tags;
+      } else {
+        blog.tags = []; // Ensure tags is an empty array if there are no tags
+      }
+    } catch (tagError) {
+      console.error('Error fetching tags:', tagError);
+      blog.tags = []; // Set empty tags if query fails
+    }
+
+    // Fire-and-forget view count update
+    executeQuery(
+      `UPDATE new_blogs SET view_count = view_count + 1 WHERE id = ?`,
+      [blog.id]
+    ).catch(() => {});
+
+    return blog;
+  } catch (error: any) {
+    console.error('Error fetching blog:', error);
+    throw new Error(`Failed to fetch blog: ${error.message}`);
+  }
 }
 
-async function getSimilarBlogs(blog: Blog): Promise<SimilarBlog[]> {
-  const tagIds = blog.tags.map(t => t.id).join(',');
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/blogs/similar?currentId=${blog.id}&categoryId=${blog.category_id}&tags=${tagIds}`, { cache: 'no-store' });
-  if (!res.ok) return [];
-  return res.json();
-}
+
+// async function getSimilarBlogs(blog: Blog): Promise<SimilarBlog[]> {
+//   const tagIds = blog.tags.map(t => t.id).join(',');
+//   const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/blogs/similar?currentId=${blog.id}&categoryId=${blog.category_id}&tags=${tagIds}`, { cache: 'no-store' });
+//   if (!res.ok) return [];
+//   return res.json();
+// }
 
 // --- SUB-COMPONENTS ---
 const BlogMeta = ({ blog }: { blog: Blog }) => {
@@ -138,12 +192,27 @@ const Sidebar = ({ similarBlogs }: { similarBlogs: SimilarBlog[] }) => (
 
 // --- MAIN PAGE COMPONENT ---
 export default async function BlogReadPage({ params }: { params: { slug: string } }) {
-  await params;
-  const blog = await getBlog(params.slug);
-  const similarBlogs = await getSimilarBlogs(blog);
+  // In certain Next.js scenarios (like dynamic rendering), `params` can be a promise.
+  // We must await it to get the actual values.
+  const resolvedParams = await (params as any);
+  const { slug } = resolvedParams;
+
+  if (!slug) {
+    // If there's no slug after resolving, it's a genuine 404 case.
+    notFound();
+  }
+
+  const blog = await getBlog(slug);
+
+  if (!blog) {
+    notFound();
+  }
+
+  const similarBlogs: SimilarBlog[] = [];
 
   return (
     <>
+      <ClearPerformanceMarks /> {/* Clear performance marks to prevent negative timestamp errors */}
       <ScrollToTopButton /> {/* NEW: Added scroll to top button */}
 
       <BlogHeroSection />
@@ -168,12 +237,23 @@ export default async function BlogReadPage({ params }: { params: { slug: string 
             {/* NEW: Display Category and Tags */}
             <BlogTagsAndCategory blog={blog} />
             <BlogMeta blog={blog} />
-            <p className="text-lg  text-gray-600 mb-4">{blog.excerpt}</p>
+{blog.excerpt && (
+  <p className="text-lg text-gray-600 mb-4">
+    {blog.excerpt}
+  </p>
+)}
+{blog.image && (
+  <div className="relative w-full h-[420px] my-6 rounded-xl overflow-hidden">
+    <Image
+      src={blog.image}
+      alt={blog.title}
+      fill
+      className="object-cover"
+    />
+  </div>
+)}
 
 
-            <div className="relative w-full aspect-video rounded-xl overflow-hidden mb-8">
-              <Image src={blog.image} alt={blog.title} fill style={{ objectFit: 'cover' }} />
-            </div>
 
             <article
               className="prose prose-lg max-w-none text-[#222]"

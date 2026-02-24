@@ -1,139 +1,92 @@
-import { NextResponse } from "next/server";
-import jwt from "jsonwebtoken";
+import { NextRequest, NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
 import { executeQuery, pool } from "@/lib/db";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
-    // Extract token
-    const authHeader = request.headers.get("Authorization") || "";
-    let token = "";
-
-    if (authHeader.startsWith("Bearer ")) {
-      token = authHeader.substring(7);
-    } else {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    // --------------------------------------------------
+    // Auth Check using NextAuth
+    // --------------------------------------------------
+    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
+    console.log('Profile GET token:', token);
+    if (!token) {
+      console.log('No token found in request');
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Verify JWT
-    const decoded: any = jwt.verify(token, process.env.JWT_SECRET!);
-    const agent_id = decoded.agent_id || decoded.user_id || decoded.id;
+    const userId = token.user_id as string;
+    const role = token.role as string;
+    console.log('Profile GET userId:', userId, 'role:', role);
 
-    if (!agent_id) {
+    if (!userId || role !== 'referuser') {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Fetch referuser details from users_kp_db
+    const [userData]: any = await executeQuery(
+      "SELECT user_id, name, email, phone, profile_pic, role FROM users_kp_db WHERE user_id = ? AND role = 'referuser'",
+      [userId]
+    );
+
+    if (userData.length === 0) {
       return NextResponse.json(
-        { message: "Invalid token: no agent_id" },
-        { status: 400 }
+        { message: "Referuser not found" },
+        { status: 404 }
       );
     }
 
-    // First try to fetch from agents table
-    const agentsQuery = `
-      SELECT
-        agent_id,
-        admin_id,
-        agent_name,
-        email,
-        phone,
-        whatsapp,
-        address,
-        occupation,
-        profile_pic
-      FROM agents
-      WHERE agent_id = ?
-    `;
+    const user = userData[0];
 
-    let [result]: any = await executeQuery(agentsQuery, [agent_id]);
-    let agentData: any = null;
+    // Fetch agent details from agents table
+    const [agentData]: any = await executeQuery(
+      "SELECT agent_id, agent_name, email, phone, whatsapp, address, occupation, admin_id, profile_pic FROM agents WHERE agent_id = ?",
+      [userId]
+    );
 
-    if (result && result.length > 0) {
-      // Found in agents table
-      const agent = result[0];
-      agentData = {
+    const agent = agentData.length > 0 ? agentData[0] : null;
+
+    console.log('User profile_pic:', user.profile_pic);
+    console.log('Agent profilePic:', agent?.profile_pic);
+
+    return NextResponse.json({
+      user: {
+        id: user.user_id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        profile_pic: user.profile_pic || "/user.png",
+      },
+      agent: agent ? {
         agent_id: agent.agent_id,
-        representativeId: agent.admin_id,
         name: agent.agent_name,
         email: agent.email,
         phone: agent.phone,
         whatsapp: agent.whatsapp,
         address: agent.address,
         occupation: agent.occupation,
-        profilePic: agent.profile_pic || '/placeholder_person.jpg',
-      };
-    } else {
-      // Not found in agents, try users_kp_db
-      const usersQuery = `
-        SELECT
-          user_id,
-          name,
-          email,
-          phone,
-          whatsapp,
-          address,
-          occupation
-        FROM users_kp_db
-        WHERE user_id = ?
-      `;
-
-      [result] = await executeQuery(usersQuery, [agent_id]);
-
-      if (!result || result.length === 0) {
-        return NextResponse.json({ message: "User not found" }, { status: 404 });
-      }
-
-      const user = result[0];
-      agentData = {
-        agent_id: user.user_id,
-        representativeId: user.user_id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        whatsapp: user.whatsapp,
-        address: user.address,
-        occupation: user.occupation,
-        profilePic: null,
-      };
-    }
-
+        representativeId: agent.admin_id,
+        profilePic: agent.profile_pic,
+      } : null,
+    });
+  } catch (error: any) {
+    console.error("REFERUSER PROFILE API ERROR:", error);
     return NextResponse.json(
-      {
-        agent: {
-          ...agentData,
-          password: "",
-          confirmPassword: "",
-        },
-      },
-      { status: 200 }
+      { message: "Server error", error: error.message },
+      { status: 500 }
     );
-  } catch (err: any) {
-    console.error("PROFILE API ERROR:", err.message);
-
-    if (err.name === "JsonWebTokenError") {
-      return NextResponse.json(
-        { message: "Invalid or expired token" },
-        { status: 401 }
-      );
-    }
-
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
 
-export async function PUT(request: Request) {
+export async function PUT(request: NextRequest) {
   try {
-    // Extract token
-    const authHeader = request.headers.get("Authorization") || "";
-    let token = "";
-
-    if (authHeader.startsWith("Bearer ")) {
-      token = authHeader.substring(7);
-    } else {
+    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
+    if (!token) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
-
-    // Verify JWT
-    const decoded: any = jwt.verify(token, process.env.JWT_SECRET!);
-    const user_id = decoded.agent_id || decoded.user_id || decoded.id;
+    const user_id = token.user_id as string;
 
     if (!user_id) {
       return NextResponse.json(

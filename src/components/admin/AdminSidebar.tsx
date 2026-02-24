@@ -18,6 +18,7 @@ import {
   Star,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { useSidebar } from "@/contexts/SidebarContext";
@@ -33,7 +34,7 @@ const navGroups = [
   {
     title: "Overview",
     links: [
-      { label: "Dashboard", icon: LayoutDashboard, href: "/admin/dashboard" },
+      { label: "Dashboard", icon: LayoutDashboard, href: "/superadmin", isExternal: true },
     ],
   },
   {
@@ -67,6 +68,7 @@ const navGroups = [
 export default function AdminSidebar() {
   const { isOpen, toggleSidebar } = useSidebar();
   const pathname = usePathname();
+  const router = useRouter();
   const sidebarRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
 
@@ -94,6 +96,12 @@ export default function AdminSidebar() {
   const handleSidebarClick = () => {
     if (!isOpen) {
       toggleSidebar();
+    }
+  };
+
+  const handleLinkClick = (href: string, isExternal?: boolean) => {
+    if (isExternal) {
+      router.push(href);
     }
   };
 

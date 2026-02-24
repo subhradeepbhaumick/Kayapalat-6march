@@ -21,6 +21,7 @@ async function ensureDirExists(directoryPath: string) {
 // GET function with working filters
 export async function GET(req: Request) {
   try {
+    console.log(`Request received: ${req.method} ${new URL(req.url).pathname}`);
     const { searchParams } = new URL(req.url);
     const searchTerm = searchParams.get('search') || '';
     const categoryId = searchParams.get('category') || '';

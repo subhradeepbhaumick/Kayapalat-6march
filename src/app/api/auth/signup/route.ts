@@ -4,11 +4,11 @@ import bcrypt from 'bcryptjs';
 
 export async function POST(request: Request) {
   try {
-    const { name, email, password } = await request.json();
+    const { name, email, phone, location, password } = await request.json();
 
     // Check if user already exists
     const [existingUsers] = await executeQuery(
-      'SELECT * FROM users WHERE email = ?',
+      'SELECT * FROM users_kp_db WHERE email = ?',
       [email]
     );
 
@@ -24,8 +24,8 @@ export async function POST(request: Request) {
 
     // Insert new user
     await executeQuery(
-      'INSERT INTO users (name, email, password) VALUES (?, ?, ?)',
-      [name, email, hashedPassword]
+      'INSERT INTO users_kp_db (name, email, phone, address, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())',
+      [name, email, phone, location, hashedPassword, 'client']
     );
 
     return NextResponse.json(
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-} 
+}
 
 
 

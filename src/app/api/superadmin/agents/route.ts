@@ -78,9 +78,20 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const { agent_id, admin_id } = await request.json();
-    const query = 'UPDATE agents SET admin_id = ? WHERE agent_id = ?';
-    await executeQuery(query, [admin_id, agent_id]);
-    return NextResponse.json({ message: 'Admin updated successfully' });
+
+    // 1. Update admin in agents table
+    const updateAgentQuery = 'UPDATE agents SET admin_id = ? WHERE agent_id = ?';
+    await executeQuery(updateAgentQuery, [admin_id, agent_id]);
+
+    // 2. Update admin in projects table for all projects assigned to this agent
+    const updateProjectsQuery = 'UPDATE projects SET admin_id = ? WHERE agent_id = ?';
+    await executeQuery(updateProjectsQuery, [admin_id, agent_id]);
+    
+    // 3. Update admin in leads table
+    const updateLeadsQuery = 'UPDATE leads SET admin_id = ? WHERE agent_id = ?';
+    await executeQuery(updateLeadsQuery, [admin_id, agent_id]);
+    
+    return NextResponse.json({ message: 'Admin updated successfully across tables' });
   } catch (error) {
     console.error('Error updating admin:', error);
     return NextResponse.json({ error: 'Failed to update admin' }, { status: 500 });

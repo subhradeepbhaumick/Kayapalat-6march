@@ -4,7 +4,8 @@
 
 import React, { useState, useEffect } from "react";
 import { PlusCircle, X } from "lucide-react";
-import { useAuth } from '@/contexts/AuthContext'; // make sure this exists
+import { useSession } from 'next-auth/react';
+import { useRouter } from "next/navigation";
 
 
 interface Client {
@@ -21,7 +22,9 @@ interface Client {
 }
 
 const ClientPage: React.FC = () => {
-  const { user } = useAuth();
+  const { data: session, status } = useSession();
+  const router = useRouter();
+
   const [showForm, setShowForm] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
   const [clients, setClients] = useState<Client[]>([]);
@@ -41,18 +44,24 @@ const ClientPage: React.FC = () => {
   const [showReminderModal, setShowReminderModal] = useState(false);
 
   useEffect(() => {
+    if (status === 'loading' || !session?.user?.id) return;
+
     const fetchClients = async () => {
       try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          console.error('No token found');
+        const res = await fetch(`/api/lead?agent_id=${session.user.id}`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: 'include',
+        });
+
+        if (res.status === 401) {
+          console.log("Unauthorized, session expired");
+          router.push('/login');
           return;
         }
-        const res = await fetch(`/api/lead?agent_id=${user?.user_id}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
+
         if (res.ok) {
           const data = await res.json();
           setClients(data);
@@ -64,32 +73,27 @@ const ClientPage: React.FC = () => {
       }
     };
 
-    if (user?.user_id) {
-      fetchClients();
-    }
-  }, [user?.user_id]);
+    fetchClients();
+  }, [session?.user?.id, status]);
 
   useEffect(() => {
-    if (user === undefined) return;
-
-    if (!user?.user_id) {
-      return;
-    }
+    if (status === 'loading' || !session?.user?.id) return;
 
     const fetchProfile = async () => {
       try {
-        const token = localStorage.getItem("token");
-        if (!token) {
-          return;
-        }
-
         const res = await fetch("/api/referuser/profile", {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`,
           },
+          credentials: 'include',
         });
+
+        if (res.status === 401) {
+          console.log("Unauthorized, session expired");
+          router.push('/login');
+          return;
+        }
 
         if (res.ok) {
           const data = await res.json();
@@ -102,7 +106,7 @@ const ClientPage: React.FC = () => {
     };
 
     fetchProfile();
-  }, [user]);
+  }, [session?.user?.id, status]);
 
   useEffect(() => {
     if (agentDBInfo && (!agentDBInfo.representativeId || agentDBInfo.representativeId.trim() === '' || agentDBInfo.representativeId === agentDBInfo.agent_id)) {
@@ -129,16 +133,8 @@ const handleSubmit = async (e: React.FormEvent) => {
   if (!formData.client_name || !formData.client_phone) return;
 
   // Validation alerts
-  if (formData.email && !formData.email.includes('@')) {
-    alert('Email should contain "@"');
-    return;
-  }
   if (!/^\d{10}$/.test(formData.client_phone)) {
     alert('Phone should contain exactly 10 digits');
-    return;
-  }
-  if (!/^\d{10}$/.test(formData.whatsapp)) {
-    alert('WhatsApp should contain exactly 10 digits');
     return;
   }
 
@@ -148,8 +144,8 @@ const handleSubmit = async (e: React.FormEvent) => {
   const newClient = {
     ...formData,
     lead_date,
-    agent_id: user?.user_id || null, // <-- automatically pass logged-in agent
-    admin_id: user?.user_id || null  // optional, if you want admin_id also
+    agent_id: session?.user?.id || null, // <-- automatically pass logged-in agent
+    admin_id: session?.user?.id || null  // optional, if you want admin_id also
   };
 
   try {
@@ -157,13 +153,20 @@ const handleSubmit = async (e: React.FormEvent) => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(newClient),
+      credentials: 'include',
     });
 
     const result = await res.json();
 
     if (res.ok) {
       // Fetch updated list from server
-      const fetchRes = await fetch(`/api/lead?agent_id=${user?.user_id}`);
+      const fetchRes = await fetch(`/api/lead?agent_id=${session?.user?.id}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: 'include',
+      });
       if (fetchRes.ok) {
         const updatedClients = await fetchRes.json();
         setClients(updatedClients);
@@ -245,77 +248,115 @@ const handleSubmit = async (e: React.FormEvent) => {
           </h2>
 
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input
-              type="text"
-              name="client_name"
-              value={formData.client_name}
-              onChange={handleChange}
-              placeholder="Client Name"
-              required
-              className="p-2 border rounded-md focus:ring-2 focus:ring-blue-500"
-            />
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              placeholder="Email ID"
-              className="p-2 border rounded-md focus:ring-2 focus:ring-blue-500"
-            />
-            <input
-              type="text"
-              name="client_phone"
-              value={formData.client_phone}
-              onChange={handleChange}
-              placeholder="Phone Number"
-              required
-              className="p-2 border rounded-md focus:ring-2 focus:ring-blue-500"
-            />
-            <input
-              type="text"
-              name="whatsapp"
-              value={formData.whatsapp}
-              onChange={handleChange}
-              placeholder="WhatsApp Number"
-              
-              className="p-2 border rounded-md focus:ring-2 focus:ring-blue-500"
-            />
-            <input
-              type="text"
-              name="address"
-              value={formData.address}
-              onChange={handleChange}
-              placeholder="Address"
-              
-              className="p-2 border rounded-md focus:ring-2 focus:ring-blue-500 col-span-1 md:col-span-2"
-            />
-            <input
-              type="text"
-              name="city"
-              value={formData.city}
-              onChange={handleChange}
-              placeholder="City / Town"
-              
-              className="p-2 border rounded-md focus:ring-2 focus:ring-blue-500"
-            />
-            <input
-              type="text"
-              name="state"
-              value={formData.state}
-              onChange={handleChange}
-              placeholder="State"
-            
-              className="p-2 border rounded-md focus:ring-2 focus:ring-blue-500"
-            />
-            <input
-              type="text"
-              name="pincode"
-              value={formData.pincode}
-              onChange={handleChange}
-              placeholder="Pincode"
-              
-              className="p-2 border rounded-md focus:ring-2 focus:ring-blue-500"
-            />
+
+            {/* Client Name */}
+            <div className="flex flex-col">
+              <label className="text-sm font-semibold text-gray-700 mb-1">Client Name *</label>
+              <input
+                type="text"
+                name="client_name"
+                value={formData.client_name}
+                onChange={handleChange}
+                placeholder="Client Name"
+                required
+                className="p-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            {/* Email */}
+            <div className="flex flex-col">
+              <label className="text-sm font-semibold text-gray-700 mb-1">Email ID</label>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="Email ID"
+                className="p-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            {/* Phone Number */}
+            <div className="flex flex-col">
+              <label className="text-sm font-semibold text-gray-700 mb-1">Phone Number *</label>
+              <input
+                type="text"
+                name="client_phone"
+                value={formData.client_phone}
+                onChange={handleChange}
+                placeholder="Phone Number"
+                required
+                className="p-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            {/* WhatsApp Number */}
+            <div className="flex flex-col">
+              <label className="text-sm font-semibold text-gray-700 mb-1">WhatsApp Number</label>
+              <input
+                type="text"
+                name="whatsapp"
+                value={formData.whatsapp}
+                onChange={handleChange}
+                placeholder="WhatsApp Number"
+                className="p-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            {/* Address */}
+            <div className="flex flex-col md:col-span-2">
+              <label className="text-sm font-semibold text-gray-700 mb-1">Address</label>
+              <input
+                type="text"
+                name="address"
+                value={formData.address}
+                onChange={handleChange}
+                placeholder="Address"
+                className="p-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            {/* City */}
+            <div className="flex flex-col">
+              <label className="text-sm font-semibold text-gray-700 mb-1">City / Town</label>
+              <input
+                type="text"
+                name="city"
+                value={formData.city}
+                onChange={handleChange}
+                placeholder="City / Town"
+                className="p-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            {/* State */}
+            <div className="flex flex-col">
+              <label className="text-sm font-semibold text-gray-700 mb-1">State</label>
+              <input
+                type="text"
+                name="state"
+                value={formData.state}
+                onChange={handleChange}
+                placeholder="State"
+                className="p-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            {/* Pincode */}
+            <div className="flex flex-col">
+              <label className="text-sm font-semibold text-gray-700 mb-1">Pincode</label>
+              <input
+                type="text"
+                name="pincode"
+                value={formData.pincode}
+                onChange={handleChange}
+                placeholder="Pincode"
+                className="p-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+
+
 
             <div className="col-span-1 md:col-span-2 flex justify-center mt-4">
               <button
@@ -351,11 +392,18 @@ const handleSubmit = async (e: React.FormEvent) => {
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Important Reminder</h3>
             <p className="text-gray-600 mb-6">
-              You do not have a Representative ID in your profile yet. Do not start referring unless you get your Representative ID, otherwise you will not get any reward.
+              You do not have a Representative ID in your profile yet.
+              Do not start referring until you get your Representative ID,
+              otherwise you will not get any reward.
             </p>
+
             <div className="flex justify-end">
               <button
-                onClick={() => setShowReminderModal(false)}
+                onClick={() => {
+                  setShowReminderModal(false);
+                    // redirect to My Profile by switching tabs
+                   window.dispatchEvent(new CustomEvent("goToMyProfile"));
+                }}
                 className="px-4 py-2 bg-[#295A47] text-white rounded-lg hover:bg-[#1e3d32] transition-colors"
               >
                 OK

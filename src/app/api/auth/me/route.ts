@@ -1,10 +1,9 @@
 import { NextResponse, NextRequest } from "next/server";
-import jwt from "jsonwebtoken";
+import { getToken } from "next-auth/jwt";
 
 export async function GET(req: NextRequest) {
   try {
-    const authHeader = req.headers.get("authorization");
-    const token = authHeader?.startsWith("Bearer ") ? authHeader.substring(7) : null;
+    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
 
     if (!token) {
       return NextResponse.json(
@@ -13,15 +12,13 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const decoded: any = jwt.verify(token, process.env.JWT_SECRET!);
-
     return NextResponse.json({
       success: true,
       user: {
-        user_id: decoded.user_id,
-        name: decoded.name,
-        email: decoded.email,
-        role: decoded.role,
+        user_id: token.user_id,
+        name: token.name,
+        email: token.email,
+        role: token.role,
       }
     });
 

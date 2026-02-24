@@ -250,6 +250,7 @@ const SuperAdmin_Agents = () => {
                       onClick={(e) => e.stopPropagation()}
                       className="w-full border rounded px-2 py-1"
                     >
+                      <option value="" disabled>Select to choose the admin_id</option>
                       {admins.map((a, i) => (
                         <option key={i} value={a}>
                           {a}

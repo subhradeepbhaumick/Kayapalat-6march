@@ -1,14 +1,16 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Menu, Bell, LayoutDashboard, Users, UserPlus, BarChart3, ClipboardList, Search, LogOut, User,Settings } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { Menu, Bell, LayoutDashboard, Users, UserPlus, BarChart3, Store, ClipboardList, Search, LogOut, User,Settings } from 'lucide-react';
+import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import AgentsTab from './sales_agents';
 import LeadsTab from './sales_leads';
 import PaymentsTab from './sales_payments';
 import InvoicesTab from './sales_invoices';
+import ProductsTab from './sales_products';
+import OrdersTab from './sales_showorder';
 import BusinessInsightsTab from './sales_businessInsights';
 import NotificationsTab from './sales_notifications';
 import TodoTab from './sales_todo';
@@ -19,19 +21,20 @@ const SalesAdmin = () => {
   const [activeTab, setActiveTab] = useState('Dashboard');
   const [stats, setStats] = useState({ activeAgents: 0, totalLeads: 0, totalRevenue: 0 });
   const [loadingStats, setLoadingStats] = useState(true);
+  const [userData, setUserData] = useState<any>(null);
 
-  const { user, logout } = useAuth();
+  const { data: session, status } = useSession();
+  const user = session?.user;
   const router = useRouter();
 
   // Fetch dashboard stats
   React.useEffect(() => {
+    if (status === 'loading') return; // Wait for session to load
+
     const fetchStats = async () => {
       try {
-        const token = localStorage.getItem('token');
         const res = await fetch('/api/sales-admin/dashboard_stats', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
+          credentials: 'include',
         });
         const data = await res.json();
         if (res.ok) {
@@ -45,19 +48,20 @@ const SalesAdmin = () => {
         setLoadingStats(false);
       }
     };
-    fetchStats();
-  }, []);
+
+    if (session) {
+      fetchStats();
+    } else {
+      setLoadingStats(false);
+    }
+  }, [session, status]);
 
   const handleLogout = async () => {
     try {
-      const response = await fetch('/api/auth/logout', { method: 'POST' });
-      if (response.ok) {
-        logout();
-        toast.success('Logged out successfully');
-        router.push('/login');
-      } else {
-        toast.error('Failed to logout');
-      }
+      // Sign out from NextAuth and redirect manually
+      await signOut();
+      router.push("/login");
+      toast.success('Logged out successfully');
     } catch (error) {
       console.error('Logout failed:', error);
       toast.error('Logout failed');
@@ -65,33 +69,29 @@ const SalesAdmin = () => {
   };
  React.useEffect(() => {
    const fetchUserData = async () => {
+     console.log('Sales Admin: Starting fetchUserData');
      try {
-       console.log('Fetching user data...');
-       const token = localStorage.getItem('token');
-       if (!token) {
-         console.warn('No token found in localStorage');
-         return;
-       }
+       console.log('Sales Admin: Making fetch request to /api/sales-admin/profile');
        const res = await fetch("/api/sales-admin/profile", {
          method: "GET",
-         headers: {
-           'Authorization': `Bearer ${token}`,
-         },
+         credentials: 'include',
        });
+       console.log('Sales Admin: Profile fetch response status:', res.status);
        const data = await res.json();
-       console.log("USER DATA:", data);
+       console.log("Sales Admin: Profile USER DATA:", data);
 
        if (data.admin) {
-         // User data is already managed by useAuth context
-         console.log('Admin data fetched:', data.admin);
+         setUserData(data.admin);
+         console.log('Sales Admin: Admin data fetched and set:', data.admin);
        } else {
-         console.warn('Admin data not present in response.');
+         console.warn('Sales Admin: Admin data not present in response.');
        }
      } catch (error) {
-       console.error('Failed to fetch user data:', error);
+       console.error('Sales Admin: Failed to fetch user data:', error);
      }
    };
 
+   console.log('Sales Admin: Calling fetchUserData');
    fetchUserData();
  }, []);
 
@@ -130,6 +130,8 @@ React.useEffect(() => {
     { icon: UserPlus, label: 'Leads', key: 'Leads' },
     { icon: UserPlus, label: 'Payments', key: 'Payments' },
     { icon: UserPlus, label: 'Invoices', key: 'Invoices' },
+    { icon: Store, label: 'Products', key: 'Products' },
+    { icon: Store, label: 'Orders', key: 'Orders' },
     { icon: BarChart3, label: 'Business Insights', key: 'Business Insights' },
     { icon: Bell, label: 'Notifications', key: 'Notifications' },
     { icon: ClipboardList, label: 'To Do', key: 'To Do' },
@@ -139,15 +141,15 @@ React.useEffect(() => {
   return (
     <div className="min-h-screen bg-[#D2EBD0] flex">
       {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 ${sidebarCollapsed ? 'w-16' : 'w-64'} bg-white shadow-lg transition-all duration-300 ease-in-out`}>
+      <div className={`fixed inset-y-0 left-0 z-50 ${sidebarCollapsed ? 'w-16' : 'w-64'} bg-white shadow-lg transform transition-all duration-300 ease-in-out ${sidebarCollapsed ? 'lg:w-16' : 'lg:w-64'} ${sidebarCollapsed ? '-translate-x-full lg:translate-x-0' : 'translate-x-0'}`}>
         {/* Header Section */}
-        <div className="p-4 border-b bg-[#D7E7D0]">
+        <div className="p-3 sm:p-4 border-b bg-[#D7E7D0]">
           <div className="flex items-center justify-between">
             {!sidebarCollapsed && (
-              <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center">
+              <div className="flex items-center space-x-2 sm:space-x-3 flex-1 min-w-0">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center flex-shrink-0">
                   <img
-                    src={user?.profile_pic || "/placeholder_person.jpg"}
+                    src={userData?.profile_pic || user?.image || "/placeholder_person.jpg"}
                     alt="Profile"
                     className="w-full h-full object-cover"
                     onError={(e) => {
@@ -159,18 +161,18 @@ React.useEffect(() => {
                       }
                     }}
                   />
-                  <User className="w-6 h-6 text-gray-500 hidden" />
+                  <User className="w-5 h-5 sm:w-6 sm:h-6 text-gray-500 hidden" />
                 </div>
-                <div>
-                  <h3 className="font-semibold text-[#DC0835]">{user?.name || "Admin"}</h3>
-                  <p className="text-sm text-gray-600">Sales Administrator</p>
-                  <p className="text-sm text-black-600">ID: <strong>{user?.user_id || "N/A"}</strong></p>
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-semibold text-[#DC0835] text-sm sm:text-base truncate">{userData?.name || user?.name || "Admin"}</h3>
+                  <p className="text-xs sm:text-sm text-gray-600">Sales Administrator</p>
+                  <p className="text-xs sm:text-sm text-black-600 truncate">ID: <strong>{userData?.id || user?.id || "N/A"}</strong></p>
                 </div>
               </div>
             )}
             <button
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="text-[#295A47] hover:text-[#1e3d32] transition-colors"
+              className="text-[#295A47] hover:text-[#1e3d32] transition-colors flex-shrink-0"
             >
               <Menu size={20} />
             </button>
@@ -197,13 +199,21 @@ React.useEffect(() => {
       {/* Main Content */}
       <div className={`flex-1 overflow-y-auto pt-20 ${sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'}`}>
         {/* Navbar */}
-        <div className={`bg-white shadow-md p-4 flex justify-between items-center fixed top-0 z-40 ${sidebarCollapsed ? 'lg:left-16 left-0' : 'lg:left-64 left-0'} right-0`}>
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-3 pr-80 pl-2">
+        <div className={`bg-white shadow-md p-2 sm:p-4 flex justify-between items-center fixed top-0 z-40 ${sidebarCollapsed ? 'lg:left-16 left-0' : 'lg:left-64 left-0'} right-0`}>
+          <div className="flex items-center space-x-2 sm:space-x-4 flex-1">
+            {/* Mobile Menu Button */}
+            <button
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className="lg:hidden text-[#295A47] hover:text-[#1e3d32] transition-colors p-1"
+            >
+              <Menu size={24} />
+            </button>
+
+            <div className="flex items-center space-x-2 sm:space-x-3 pr-2 sm:pr-4 lg:pr-80 pl-1 sm:pl-2">
               <img
                 src="/kayapalat-logo.png"
                 alt="Kayapalat Logo"
-                className="h-6 w-auto"
+                className="h-5 sm:h-6 w-auto"
                 onError={(e) => {
                   // Fallback to text if image fails to load
                   e.currentTarget.style.display = 'none';
@@ -213,16 +223,8 @@ React.useEffect(() => {
                   }
                 }}
               />
-              <h1 className="text-xl font-bold text-[#295A47] hidden">KAYAPALAT</h1>
             </div>
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Search..."
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#295A47] focus:border-transparent"
-              />
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-            </div>
+            
           </div>
           <button
 
@@ -311,43 +313,43 @@ React.useEffect(() => {
         </div>
 
         {/* Welcome Bar */}
-        <div className="bg-[#295A47] text-white py-3 px-8">
+        <div className="bg-[#295A47] text-white py-2 sm:py-3 px-4 sm:px-8">
           <div className="max-w-4xl mx-auto">
-            <h4 className="text-lg font-semibold text-center">Welcome to Sales Admin Dashboard</h4>
+            <h4 className="text-sm sm:text-lg font-semibold text-center">Welcome to Sales Admin Dashboard</h4>
           </div>
         </div>
 
         {/* Hero Section */}
-        <div className={`p-8 ${sidebarCollapsed ? 'lg:p-4' : ''}`}>
-          <div className="max-w-8xl pt-4 mx-auto">
-            <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
+        <div className="p-4 sm:p-6 lg:p-8">
+          <div className="max-w-8xl pt-2 sm:pt-4 mx-auto">
+            <div className="bg-white rounded-lg shadow-lg p-3 sm:p-4 lg:p-8 mb-4 sm:mb-8">
               {activeTab === 'Dashboard' && (
                 <>
-                  <div className="text-center mb-8">
-                    <h1 className="text-4xl font-bold text-[#295A47] mb-4">
+                  <div className="text-center mb-6 sm:mb-8">
+                    <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-[#295A47] mb-3 sm:mb-4">
                       Sales Admin Dashboard
                     </h1>
-                    <p className="text-gray-600 text-lg">
+                    <p className="text-gray-600 text-sm sm:text-base lg:text-lg px-2">
                       Manage your sales operations, agents, leads, and business insights.
                     </p>
                   </div>
 
                   {/* Stats Cards */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    <div className="bg-[#D7E7D0] rounded-lg p-6 text-center">
-                      <Users className="w-12 h-12 text-[#295A47] mx-auto mb-4" />
-                      <h3 className="text-2xl font-bold text-[#295A47]">{loadingStats ? '...' : stats.activeAgents}</h3>
-                      <p className="text-gray-700">Total Agents</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+                    <div className="bg-[#D7E7D0] rounded-lg p-4 sm:p-6 text-center">
+                      <Users className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-[#295A47] mx-auto mb-3 sm:mb-4" />
+                      <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-[#295A47]">{loadingStats ? '...' : stats.activeAgents}</h3>
+                      <p className="text-gray-700 text-sm sm:text-base">Total Agents</p>
                     </div>
-                    <div className="bg-[#D7E7D0] rounded-lg p-6 text-center">
-                      <UserPlus className="w-12 h-12 text-[#295A47] mx-auto mb-4" />
-                      <h3 className="text-2xl font-bold text-[#295A47]">{loadingStats ? '...' : stats.totalLeads}</h3>
-                      <p className="text-gray-700">Total Leads</p>
+                    <div className="bg-[#D7E7D0] rounded-lg p-4 sm:p-6 text-center">
+                      <UserPlus className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-[#295A47] mx-auto mb-3 sm:mb-4" />
+                      <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-[#295A47]">{loadingStats ? '...' : stats.totalLeads}</h3>
+                      <p className="text-gray-700 text-sm sm:text-base">Total Leads</p>
                     </div>
-                    <div className="bg-[#D7E7D0] rounded-lg p-6 text-center">
-                      <BarChart3 className="w-12 h-12 text-[#295A47] mx-auto mb-4" />
-                      <h3 className="text-2xl font-bold text-[#295A47]">₹{loadingStats ? '...' : (stats.totalRevenue || 0).toLocaleString()}</h3>
-                      <p className="text-gray-700">Revenue</p>
+                    <div className="bg-[#D7E7D0] rounded-lg p-4 sm:p-6 text-center sm:col-span-2 lg:col-span-1">
+                      <BarChart3 className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-[#295A47] mx-auto mb-3 sm:mb-4" />
+                      <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-[#295A47]">₹{loadingStats ? '...' : (stats.totalRevenue || 0).toLocaleString()}</h3>
+                      <p className="text-gray-700 text-sm sm:text-base">Revenue</p>
                     </div>
                   </div>
                 </>
@@ -382,6 +384,12 @@ React.useEffect(() => {
               {activeTab === 'Settings' && (
                 <SettingsTab />
               )}
+              {activeTab === 'Products' && (
+                <ProductsTab />
+              )}
+              {activeTab === 'Orders' && (
+                <OrdersTab />
+              )}
             </div>
           </div>
         </div>
@@ -390,7 +398,7 @@ React.useEffect(() => {
       {/* Overlay for mobile sidebar */}
       {!sidebarCollapsed && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          className="fixed inset-0 bg-black/70 bg-opacity-50 z-40 lg:hidden"
           onClick={() => setSidebarCollapsed(true)}
         />
       )}

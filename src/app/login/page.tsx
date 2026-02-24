@@ -2,13 +2,12 @@
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { signIn, getSession } from "next-auth/react";
 import { toast } from "react-hot-toast";
-import { useAuth } from "@/contexts/AuthContext";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { isAuthenticated, login } = useAuth();
-  const [user, setUser] = useState({ login: "", password: "" });
+  const [loginData, setLoginData] = useState({ login: "", password: "" });
   const [buttonDisabled, setButtonDisabled] = useState(true);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -16,31 +15,88 @@ export default function LoginPage() {
 
   // Wait for auth check before rendering
   useEffect(() => {
-    setAuthChecked(true);
-  }, []);
-
-  // Redirect if already logged in
-  useEffect(() => {
-    if (authChecked && isAuthenticated) {
-      router.push("/");
-    }
-  }, [isAuthenticated, router, authChecked]);
+    const checkAuth = async () => {
+      const session = await getSession();
+      if (session) {
+        router.push("/");
+      }
+      setAuthChecked(true);
+    };
+    checkAuth();
+  }, [router]);
 
   // Disable button if fields are empty
   useEffect(() => {
-    setButtonDisabled(!(user.login && user.password));
-  }, [user]);
+    setButtonDisabled(!(loginData.login && loginData.password));
+  }, [loginData]);
 
   const handleLogin = async () => {
+    console.log('Login Page: Starting login process');
+    console.log('Login Page: Email:', loginData.login);
     setLoading(true);
-    const success = await login(user.login, user.password);
-    setLoading(false);
+    try {
+      console.log('Login Page: Calling signIn with credentials');
+      const result = await signIn("credentials", {
+        email: loginData.login,
+        password: loginData.password,
+        redirect: false,
+      });
 
-    if (success) {
-      toast.success("🎉 Welcome back to Kayapalat family!");
-      router.push("/");
-    } else {
-      toast.error("Invalid login credentials.");
+      console.log('Login Page: signIn result:', result);
+
+      if (result?.error) {
+        console.log('Login Page: signIn error:', result.error);
+        toast.error("Invalid login credentials.");
+      } else if (result?.ok) {
+        console.log('Login Page: signIn successful');
+        toast.success("🎉 Welcome back to Kayapalat family!");
+        // Get the session to determine redirect
+        console.log('Login Page: Getting session after login');
+        const session = await getSession();
+        console.log('Login Page: Session after login:', session);
+
+        if (session?.user) {
+          console.log('Login Page: User in session:', session.user);
+          console.log('Login Page: User role:', session.user.role);
+          console.log('Login Page: User id:', session.user.id);
+          console.log('Login Page: User name:', session.user.name);
+          console.log('Login Page: User email:', session.user.email);
+
+          const role = session.user.role;
+          switch (role) {
+            case "referuser":
+              console.log('Login Page: Redirecting to /referuser');
+              router.push("/referuser");
+              break;
+            case "sales_admin":
+              console.log('Login Page: Redirecting to /sales-admin');
+              router.push("/sales-admin");
+              break;
+            case "superadmin":
+              console.log('Login Page: Redirecting to /superadmin');
+              router.push("/superadmin");
+              break;
+            case "client":
+              console.log('Login Page: Redirecting to /client');
+              router.push("/client");
+              break;
+            case "designer":
+              console.log('Login Page: Redirecting to /designer');
+              router.push("/designer");
+              break;
+            default:
+              console.log('Login Page: Unknown role, redirecting to /');
+              router.push("/");
+          }
+        } else {
+          console.log('Login Page: No user in session after login');
+        }
+      }
+    } catch (error) {
+      console.error("Login Page: Error during login:", error);
+      toast.error("Login failed. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -56,7 +112,7 @@ export default function LoginPage() {
     <div className="flex flex-col items-center justify-center min-h-screen bg-[#D2EBD0] sm:bg-[#E8F5E9] transition-all duration-300 text-black p-6">
       <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md border border-gray-200 transition-all duration-300">
         <h1 className="text-2xl font-bold text-center mb-4 text-teal-700">
-          {loading ? "Processing..." : "Welcome Back!"}
+          Welcome Back!
         </h1>
         <p className="text-gray-600 text-center mb-6">Log in to your Kayapalat account.</p>
 
@@ -65,8 +121,8 @@ export default function LoginPage() {
           <input
             id="login"
             type="text"
-            value={user.login}
-            onChange={(e) => setUser({ ...user, login: e.target.value })}
+            value={loginData.login}
+            onChange={(e) => setLoginData({ ...loginData, login: e.target.value })}
             placeholder="Enter Your Email"
             className="p-3 border border-gray-300 rounded-lg mb-4 bg-white text-black focus:outline-none focus:border-teal-500"
           />
@@ -76,8 +132,8 @@ export default function LoginPage() {
             <input
               id="password"
               type={showPassword ? "text" : "password"}
-              value={user.password}
-              onChange={(e) => setUser({ ...user, password: e.target.value })}
+              value={loginData.password}
+              onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
               placeholder="Enter password"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !buttonDisabled && !loading) handleLogin();

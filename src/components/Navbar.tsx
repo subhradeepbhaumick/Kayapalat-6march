@@ -387,12 +387,14 @@ import { Menu, X, User, LayoutDashboard, LogOut, UserCircle } from "lucide-react
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
-import { useAuth } from "@/contexts/AuthContext";
+import { useSession, signOut } from "next-auth/react";
 
 export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
-  const { isAuthenticated, user, logout } = useAuth();
+  const { data: session, status } = useSession();
+  const isAuthenticated = status === "authenticated";
+  const user = session?.user;
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [isClient, setIsClient] = useState(false);
@@ -433,15 +435,8 @@ export default function Navbar() {
 
   const handleLogout = async () => {
     try {
-      const response = await fetch("/api/auth/logout", { method: "POST" });
-      if (response.ok) {
-        logout();
-        toast.success("Logged out successfully");
-        router.push("/");
-        setTimeout(() => window.location.reload(), 600);
-      } else {
-        toast.error("Failed to logout");
-      }
+      await signOut({ callbackUrl: "/" });
+      toast.success("Logged out successfully");
     } catch (error) {
       console.error("Logout failed:", error);
       toast.error("Logout failed");
@@ -449,21 +444,26 @@ export default function Navbar() {
   };
 
   // -----------------------------
-  // HELPER: Get dashboard path based on user ID prefix
-  const getDashboardPath = (userId: string | undefined) => {
-    if (!userId) return "/";
-    const prefix = userId.charAt(0).toUpperCase();
-    switch (prefix) {
-      case "R":
+  // HELPER: Get dashboard path based on role
+  const getDashboardPath = (role: string | undefined) => {
+    if (!role) return "/";
+    switch (role) {
+      case "referuser":
         return "/referuser";
-      case "S":
+      case "sales_admin":
         return "/sales-admin";
-      case "O":
+      case "admin":
+        return "/admin";
+      case "superadmin":
         return "/superadmin";
-      case "C":
+      case "client":
         return "/client";
-      case "D":
+      case "designer":
         return "/designer";
+      case "supervisor":
+        return "/supervisor";
+      case "businessBrand":
+        return "/businessBrand";
       default:
         return "/";
     }
@@ -556,7 +556,7 @@ export default function Navbar() {
 
       {/* Right Section */}
       <div className="flex gap-2 relative">
-        {isAuthenticated ? (
+        {isAuthenticated && user ? (
           <div className="relative" ref={dropdownRef}>
             <button
               className="w-10 h-10 rounded-full bg-[#295A47] flex items-center justify-center hover:bg-[#1e3d32] transition-colors cursor-pointer"
@@ -567,17 +567,17 @@ export default function Navbar() {
 
             {dropdownOpen && (
               <div className="absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-md text-sm py-1 border border-gray-200">
-                <Link
+                {/* <Link 
                   href="/profile"
                   className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-[#295A47]/10 hover:text-[#295A47] cursor-pointer transition-all duration-200 hover:scale-105"
                   onClick={() => setDropdownOpen(false)}
                 >
                   <UserCircle size={16} />
                   Profile
-                </Link>
+                </Link>*/}
 
                 <Link
-                  href={getDashboardPath(user?.user_id)}
+                  href={getDashboardPath(user?.role)}
                   className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-[#295A47]/10 hover:text-[#295A47] cursor-pointer transition-all duration-200 hover:scale-105"
                   onClick={() => setDropdownOpen(false)}
                 >

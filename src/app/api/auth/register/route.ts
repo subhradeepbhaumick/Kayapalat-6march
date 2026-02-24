@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     // Hash the password before storing it
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const query = 'INSERT INTO users (first_name, last_name, email, password, phone, type) VALUES (?, ?, ?, ?, ?, ?)';
+    const query = 'INSERT INTO users_kp_db (first_name, last_name, email, password, phone, type) VALUES (?, ?, ?, ?, ?, ?)';
     // New users default to 'client' role
     await executeQuery(query, [firstName, lastName, email, hashedPassword, phone, 'client']);
 

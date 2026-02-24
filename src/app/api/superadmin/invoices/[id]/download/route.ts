@@ -34,7 +34,7 @@ export async function GET(
         u2.phone as admin_phone
       FROM invoice i
       JOIN projects p ON i.appointment_id = p.appointment_id
-      LEFT JOIN users u1 ON i.agent_id = u1.user_id
+      LEFT JOIN users_kp_db u1 ON i.agent_id = u1.user_id
       LEFT JOIN users_kp_db u2 ON p.admin_id = u2.user_id
       WHERE i.invoice_id = ?
     `;

@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession, signOut } from 'next-auth/react';
 import { Eye, EyeOff } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext'; // import AuthContext
 
 interface ProfileData {
   name: string;
@@ -20,7 +20,7 @@ interface ProfileData {
 }
 
 const MyProfilePage: React.FC = () => {
-  const { user, logout } = useAuth(); 
+  const { data: session, status } = useSession();
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -35,7 +35,7 @@ const MyProfilePage: React.FC = () => {
     address: '',
     occupation: '',
     representativeId: '',
-    agentId: user?.user_id || '',
+    agentId: session?.user?.id || '',
     password: '',
     confirmPassword: '',
   });
@@ -46,46 +46,21 @@ const MyProfilePage: React.FC = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   useEffect(() => {
-    if (user) {
-      setFormData((prev) => ({ ...prev, agentId: user.user_id }));
-      console.log("MyProfile user from AuthContext:", user);
-    }
-  }, [user]);
-
-  const handleLogout = () => {
-    logout();
-    router.push('/login');
-  };
-
-  useEffect(() => {
-    if (user === undefined) return;
-
-    if (!user?.user_id) {
-      console.log("User not found — logging out");
-      handleLogout();
-      return;
-    }
+    if (status === 'loading' || !session?.user?.id) return;
 
     const fetchProfile = async () => {
       try {
-        const token = localStorage.getItem("token");
-        if (!token) {
-          console.log("No token — logout");
-          handleLogout();
-          return;
-        }
-
         const res = await fetch("/api/referuser/profile", {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`,
           },
+          credentials: 'include',
         });
 
         if (res.status === 401) {
-          console.log("Unauthorized, token expired");
-          handleLogout();
+          console.log("Unauthorized, session expired");
+          signOut({ callbackUrl: '/login' });
           return;
         }
 
@@ -105,7 +80,7 @@ const MyProfilePage: React.FC = () => {
             address: a.address || "",
             occupation: a.occupation || "",
             representativeId: a.representativeId || a.admin_id || "",
-            agentId: a.agent_id || user.user_id,
+            agentId: a.agent_id || session.user.id,
             profilePic: a.profilePic || null,
             password: "",
             confirmPassword: "",
@@ -114,14 +89,14 @@ const MyProfilePage: React.FC = () => {
 
       } catch (error) {
         console.error("Error fetching profile:", error);
-        handleLogout();
+        signOut({ callbackUrl: '/login' });
       } finally {
         setLoading(false);
       }
     };
 
     fetchProfile();
-  }, [user]);
+  }, [session?.user?.id, status]);
 
 
 
@@ -155,13 +130,6 @@ const MyProfilePage: React.FC = () => {
     }
 
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        alert('You are not logged in.');
-        handleLogout();
-        return;
-      }
-
       const formDataToSend = new FormData();
       formDataToSend.append('name', formData.name);
       formDataToSend.append('email', formData.email);
@@ -177,15 +145,13 @@ const MyProfilePage: React.FC = () => {
 
       const res = await fetch('/api/referuser/profile', {
         method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
         body: formDataToSend,
+        credentials: 'include',
       });
 
       if (res.status === 401) {
         alert('Session expired, please login again.');
-        handleLogout();
+        signOut({ callbackUrl: '/login' });
         return;
       }
 

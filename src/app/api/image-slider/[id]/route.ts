@@ -10,8 +10,9 @@ const getImagesFromSlider = (slider: any): string[] => {
 }
 
 // GET a single slider by ID
-export async function GET(request: Request, { params }: { params: { id: string } }) {
-    const [sliders] = await executeQuery('SELECT * FROM imageslider WHERE id = ?', [params.id]);
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+    const { id } = await params;
+    const [sliders] = await executeQuery('SELECT * FROM imageslider WHERE id = ?', [id]);
     if (sliders.length === 0) {
         return NextResponse.json({ error: 'Slider not found' }, { status: 404 });
     }
@@ -19,8 +20,9 @@ export async function GET(request: Request, { params }: { params: { id: string }
 }
 
 // DELETE a slider by ID (with image cleanup)
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
-    const sliderId = parseInt(params.id, 10);
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+    const { id } = await params;
+    const sliderId = parseInt(id, 10);
     let connection;
     try {
         connection = await pool.getConnection();
@@ -56,8 +58,9 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
 }
 
 // PUT (Update) a slider by ID (with image cleanup)
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
-    const sliderId = parseInt(params.id, 10);
+export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
+    const { id } = await params;
+    const sliderId = parseInt(id, 10);
     if (isNaN(sliderId)) {
         return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
     }

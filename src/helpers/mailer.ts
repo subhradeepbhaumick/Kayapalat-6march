@@ -13,6 +13,12 @@ const resetPasswordEmail = (userId: string) => `
   <a href="${process.env.NEXT_PUBLIC_APP_URL}/reset-password?token=${userId}">Reset Password</a>
 `;
 
+const otpEmail = (otp: string) => `
+  <h1>Your OTP for Signup</h1>
+  <p>Your 4-digit OTP is: <strong>${otp}</strong></p>
+  <p>Please enter this code to verify your email.</p>
+`;
+
 // Create transporter
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
@@ -52,6 +58,28 @@ export const sendPasswordResetEmail = async (email: string, token: string) => {
     return true;
   } catch (error) {
     console.error('Error sending password reset email:', error);
+    return false;
+  }
+};
+
+// Send OTP email
+export const sendOtpEmail = async (email: string, otp: string) => {
+  // Check if SMTP is configured
+  if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASSWORD) {
+    console.log(`SMTP not configured. OTP for ${email}: ${otp}`);
+    return true; // Allow signup in development without email
+  }
+
+  try {
+    await transporter.sendMail({
+      from: process.env.SMTP_FROM || process.env.SMTP_USER,
+      to: email,
+      subject: 'Your OTP for Signup',
+      html: otpEmail(otp),
+    });
+    return true;
+  } catch (error) {
+    console.error('Error sending OTP email:', error);
     return false;
   }
 };

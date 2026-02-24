@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Users } from 'lucide-react';
 import { Calendar, Search } from 'lucide-react';
 import DatePicker from 'react-datepicker';
+import { useSession } from 'next-auth/react';
 
 interface Project {
   agent_id: string;
@@ -29,23 +30,24 @@ interface Project {
 }
 
 const AgentsTab = () => {
+  const { data: session, status } = useSession();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (status === 'loading') return;
+
+    if (!session || !session.user) {
+      console.warn('No session found');
+      setLoading(false);
+      return;
+    }
+
     const fetchProjects = async () => {
       try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          console.warn('No token found');
-          setLoading(false);
-          return;
-        }
         const res = await fetch('/api/sales-admin/projects', {
           method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
+          credentials: 'include',
         });
         const data = await res.json();
         if (data.projects) {
@@ -80,7 +82,7 @@ const AgentsTab = () => {
     };
 
     fetchProjects();
-  }, []);
+  }, [session, status]);
 
   // Extract agent names for dropdown
   const uniqueAgents = Array.from(new Set(projects.map((p) => p.agent_name)));

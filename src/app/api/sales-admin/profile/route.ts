@@ -1,35 +1,28 @@
-import { NextResponse } from "next/server";
-import jwt from "jsonwebtoken";
+import { NextRequest, NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
 import { executeQuery } from "@/lib/db";
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
-    // Read Authorization header
-    const authHeader = request.headers.get("Authorization") || "";
-
-    if (!authHeader.startsWith("Bearer ")) {
-      return NextResponse.json(
-        { message: "Unauthorized - No token provided" },
-        { status: 401 }
-      );
+    // --------------------------------------------------
+    // Auth Check using NextAuth
+    // --------------------------------------------------
+    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const token = authHeader.substring(7); // remove "Bearer "
-    const decoded: any = jwt.verify(token, process.env.JWT_SECRET!);
+    const userId = token.user_id as string;
+    const role = token.role as string;
 
-    const adminId = decoded.admin_id || decoded.user_id || decoded.id;
-
-    if (!adminId) {
-      return NextResponse.json(
-        { message: "Invalid token - Missing admin ID" },
-        { status: 400 }
-      );
+    if (!userId || (role !== 'sales_admin' && role !== 'superadmin')) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Fetch sales admin details
-    const adminData: any = await executeQuery(
-      "SELECT admin_id, admin_name, email, phone, role, profile_pic FROM admin WHERE admin_id = ? AND role = 'salesadmin'",
-      [adminId]
+    // Fetch sales admin details from users_kp_db
+    const [adminData]: any = await executeQuery(
+      "SELECT user_id, name, email, phone, profile_pic, role FROM users_kp_db WHERE user_id = ? AND role IN ('sales_admin', 'superadmin')",
+      [userId]
     );
 
     if (adminData.length === 0) {
@@ -43,8 +36,8 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       admin: {
-        id: admin.admin_id,
-        name: admin.admin_name,
+        id: admin.user_id,
+        name: admin.name,
         email: admin.email,
         phone: admin.phone,
         role: admin.role,

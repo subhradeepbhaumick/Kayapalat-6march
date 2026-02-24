@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
 import { executeQuery } from "@/lib/db";
-import { decodeToken } from "@/lib/auth";
 import fs from "fs";
 import path from "path";
 
@@ -10,6 +10,16 @@ import path from "path";
 // ======================================================
 export async function GET(request: NextRequest) {
   try {
+    // --------------------------------------------------
+    // Auth Check
+    // --------------------------------------------------
+    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
+    if (!token || !token.user_id || (token.role !== 'sales_admin' && token.role !== 'superadmin')) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const userId = token.user_id;
+
     const url = new URL(request.url);
     const nextId = url.searchParams.get("nextId");
     const invoices = url.searchParams.get("invoices");
@@ -36,10 +46,10 @@ export async function GET(request: NextRequest) {
     }
 
     // --------------------------------------------------
-    // 2️⃣ Fetch ALL INVOICES
+    // 2️⃣ Fetch ALL INVOICES or INVOICES for specific appointment
     // --------------------------------------------------
     if (invoices === "true") {
-      const invoicesQuery = `
+      let invoicesQuery = `
         SELECT
           i.invoice_id,
           i.appointment_id,
@@ -57,15 +67,23 @@ export async function GET(request: NextRequest) {
           i.due,
           i.payment_status,
           i.payment_date AS invoice_date,
+          i.payment_time AS invoice_time,
           i.proof
 
         FROM invoice i
         LEFT JOIN projects p ON i.appointment_id = p.appointment_id
         LEFT JOIN agents a ON i.agent_id = a.agent_id
-        ORDER BY i.invoice_id DESC
       `;
 
-      const [rows] = await executeQuery(invoicesQuery);
+      const params = [];
+      if (appointmentId) {
+        invoicesQuery += ` WHERE i.appointment_id = ?`;
+        params.push(appointmentId);
+      }
+
+      invoicesQuery += ` ORDER BY i.invoice_id DESC`;
+
+      const [rows] = await executeQuery(invoicesQuery, params);
       return NextResponse.json({ success: true, data: rows });
     }
 
@@ -73,12 +91,39 @@ export async function GET(request: NextRequest) {
     // 3️⃣ Get DUE Amount for Appointment
     // --------------------------------------------------
     if (due === "true" && appointmentId) {
-      const q = `SELECT agent_share FROM projects WHERE appointment_id = ?`;
+      // Check if there are any invoices for this appointment
+      const invoiceCountQuery = `SELECT COUNT(*) AS count FROM invoice WHERE appointment_id = ?`;
+      const [countResult] = await executeQuery(invoiceCountQuery, [appointmentId]);
+      const hasInvoices = countResult[0].count > 0;
+
+      if (!hasInvoices) {
+        // No invoices yet, set agent_due to agent_share
+        const initDueQuery = `
+          UPDATE projects
+          SET agent_due = agent_share
+          WHERE appointment_id = ?
+        `;
+        await executeQuery(initDueQuery, [appointmentId]);
+      }
+
+      const q = `SELECT agent_due FROM projects WHERE appointment_id = ?`;
       const [rows] = await executeQuery(q, [appointmentId]);
 
       return NextResponse.json({
         success: true,
-        due: rows.length > 0 ? rows[0].agent_share : 0,
+        due: rows.length > 0 ? rows[0].agent_due : 0,
+      });
+    }
+
+    // --------------------------------------------------
+    // 4️⃣ Get TOTAL PAID for Appointment
+    // --------------------------------------------------
+    if (url.searchParams.get("totalPaid") === "true" && appointmentId) {
+      const q = `SELECT SUM(paid) AS total_paid FROM invoice WHERE appointment_id = ?`;
+      const [rows] = await executeQuery(q, [appointmentId]);
+      return NextResponse.json({
+        success: true,
+        totalPaid: rows.length > 0 ? rows[0].total_paid || 0 : 0,
       });
     }
 
@@ -86,7 +131,7 @@ export async function GET(request: NextRequest) {
     // 🆕 5️⃣ Fetch ALL Appointment IDs for Dropdown
     // --------------------------------------------------
     if (url.searchParams.get("appointmentList") === "true") {
-      const q = `SELECT appointment_id FROM projects ORDER BY appointment_id DESC`;
+      const q = `SELECT appointment_id FROM projects WHERE booking_status = 'Booked' ORDER BY appointment_id DESC`;
       const [rows] = await executeQuery(q);
 
       return NextResponse.json({
@@ -95,38 +140,66 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // --------------------------------------------------
     // 🆕 6️⃣ Fetch Project Data for Specific Appointment ID
-    // --------------------------------------------------
-    if (url.searchParams.get("appointmentId")) {
-      const appointmentId = url.searchParams.get("appointmentId");
-      const q = `SELECT p.appointment_id , p.agent_id, a.agent_name, p.client_name, p.project_name, COALESCE(p.project_value, 0) AS client_estimate, COALESCE(p.commission, 0) AS commission, COALESCE(p.agent_share, 0) AS agent_share FROM projects p LEFT JOIN agents a ON p.agent_id = a.agent_id WHERE p.appointment_id = ?`;
-      const [rows] = await executeQuery(q, [appointmentId]);
+      if (url.searchParams.get("appointmentId")) {
+        const appointmentId = url.searchParams.get("appointmentId");
 
-      return NextResponse.json({
-        success: true,
-        data: rows,
-      });
-    }
+        // ✅ 1. Initialize agent_due if NULL
+        const initDueQuery = `
+          UPDATE projects
+          SET agent_due = agent_share
+          WHERE appointment_id = ? AND agent_due IS NULL
+        `;
+        await executeQuery(initDueQuery, [appointmentId]);
+
+        // ✅ 2. Fetch project data INCLUDING agent_due
+        const q = `
+          SELECT
+            p.appointment_id,
+            p.agent_id,
+            a.agent_name,
+            p.client_name,
+            p.project_name,
+            p.location,
+            COALESCE(p.project_value, 0) AS client_estimate,
+            COALESCE(p.commission, 0) AS commission,
+            COALESCE(p.agent_share, 0) AS agent_share,
+            COALESCE(p.agent_due, 0) AS agent_due
+          FROM projects p
+          LEFT JOIN agents a ON p.agent_id = a.agent_id
+          WHERE p.appointment_id = ?
+        `;
+
+        const [rows] = await executeQuery(q, [appointmentId]);
+
+        return NextResponse.json({
+          success: true,
+          data: rows,
+        });
+      }
+
 
     // --------------------------------------------------
     // 4️⃣ Fetch ALL PAYMENT PROFILES (Project List)
     // --------------------------------------------------
     const query = `
       SELECT
-        p.appointment_id ,
+        p.appointment_id,
         p.agent_id,
         a.agent_name,
         p.client_name,
+        p.client_phone AS clientContact,
         p.project_name,
+        p.location,
         COALESCE(p.project_value, 0) AS client_estimate,
         COALESCE(p.commission, 0) AS commission,
         COALESCE(p.agent_share, 0) AS agent_share,
-        0 AS agent_paid,
-        COALESCE(p.agent_share, 0) AS due,
+        COALESCE(p.agent_paid, 0) AS agent_paid,
+        COALESCE(p.agent_due, 0) AS due,
         COALESCE(p.payment_status, 'Due') AS payment_status
       FROM projects p
       LEFT JOIN agents a ON p.agent_id = a.agent_id
+      WHERE p.booking_status = 'Booked'
       ORDER BY p.created_at DESC
     `;
 
@@ -156,19 +229,12 @@ export async function POST(request: NextRequest) {
     // --------------------------------------------------
     // Auth Check
     // --------------------------------------------------
-    const authHeader = request.headers.get("authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
+    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
+    if (!token || !token.user_id || (token.role !== 'sales_admin' && token.role !== 'superadmin')) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const token = authHeader.substring(7);
-    const decoded = decodeToken(token);
-
-    if (!decoded || !decoded.user_id) {
-      return NextResponse.json({ error: "Invalid token" }, { status: 401 });
-    }
-
-    const userId = decoded.user_id;
+    const userId = token.user_id;
     const invoiceData = await request.json();
 
     const {
@@ -192,16 +258,18 @@ export async function POST(request: NextRequest) {
     }
 
     // --------------------------------------------------
-    // Check Admin Ownership
+    // Check Admin Ownership (skip for superadmin)
     // --------------------------------------------------
-    const checkQuery = `SELECT admin_id FROM projects WHERE appointment_id = ?`;
-    const [check] = await executeQuery(checkQuery, [appointmentId]);
+    if (token.role !== 'superadmin') {
+      const checkQuery = `SELECT admin_id FROM projects WHERE appointment_id = ?`;
+      const [check] = await executeQuery(checkQuery, [appointmentId]);
 
-    if (!check.length || check[0].admin_id !== userId) {
-      return NextResponse.json(
-        { error: "Unauthorized or project not found" },
-        { status: 403 }
-      );
+      if (!check.length || check[0].admin_id !== userId) {
+        return NextResponse.json(
+          { error: "Unauthorized or project not found" },
+          { status: 403 }
+        );
+      }
     }
 
     // --------------------------------------------------
@@ -222,12 +290,6 @@ export async function POST(request: NextRequest) {
     }
 
     // --------------------------------------------------
-    // Format Date (use local date to avoid timezone issues)
-    // --------------------------------------------------
-    const date = new Date(invoiceDate);
-    const formattedDate = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
-
-    // --------------------------------------------------
     // INSERT INTO INVOICE (Correct Final Query)
     // --------------------------------------------------
     const dbPaymentStatus = paymentStatus === 'Pending' ? 'Due' : paymentStatus;
@@ -240,10 +302,11 @@ export async function POST(request: NextRequest) {
         paid,
         due,
         payment_date,
+        payment_time,
         payment_status,
         agent_id,
         proof
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     await executeQuery(insertQuery, [
@@ -252,11 +315,35 @@ export async function POST(request: NextRequest) {
       agentShare,
       paid,
       due,
-      formattedDate,
+      invoiceDate,
+      invoiceTime,
       dbPaymentStatus,
       agentDetails.id,
       proofPath,
     ]);
+    // --------------------------------------------------
+    // 🔽 Update agent_paid and agent_due after invoice payment
+    // --------------------------------------------------
+    // Calculate total paid from all invoices for this appointment
+    const sumPaidQuery = `SELECT SUM(paid) AS total_paid FROM invoice WHERE appointment_id = ?`;
+    const [sumResult] = await executeQuery(sumPaidQuery, [appointmentId]);
+    const totalPaid = sumResult[0]?.total_paid || 0;
+
+    // Update agent_paid and reduce agent_due (original logic)
+    await executeQuery(
+      `
+      UPDATE projects
+      SET
+        agent_paid = ?,
+        agent_due = GREATEST(agent_due - ?, 0),
+        payment_status = CASE
+          WHEN agent_due - ? <= 0 THEN 'Paid'
+          ELSE 'Due'
+        END
+      WHERE appointment_id = ?
+      `,
+      [totalPaid, paid, paid, appointmentId]
+    );
 
     return NextResponse.json({
       success: true,
@@ -264,8 +351,20 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("Error saving invoice:", error);
+    console.error("Error type:", typeof error);
+    console.error("Error constructor:", error?.constructor?.name);
+
+    let errorMessage = "Unknown error occurred";
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (error && typeof error === 'object') {
+      errorMessage = JSON.stringify(error, Object.getOwnPropertyNames(error));
+    } else {
+      errorMessage = String(error);
+    }
+
     return NextResponse.json(
-      { error: "Failed to save invoice" },
+      { error: `Failed to save invoice: ${errorMessage}` },
       { status: 500 }
     );
   }
@@ -278,22 +377,12 @@ export async function POST(request: NextRequest) {
 // ======================================================
 export async function PUT(request: NextRequest) {
   try {
-    const authHeader = request.headers.get("authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
+    if (!token || !token.user_id || (token.role !== 'sales_admin' && token.role !== 'superadmin')) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const token = authHeader.substring(7);
-    const decoded = decodeToken(token);
-
-    if (!decoded?.user_id) {
-      return NextResponse.json({ error: "Invalid token" }, { status: 401 });
-    }
-
-    const userId = decoded.user_id;
+    const userId = token.user_id;
     const { appointment_id, payment_status, agent_paid } =
       await request.json();
 

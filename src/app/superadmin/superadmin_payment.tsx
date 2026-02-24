@@ -251,7 +251,8 @@ const PaymentsTab = () => {
       (p.agent_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (p.agent_id || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (p.client_name || '').toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesAdmin && matchesFilter && matchesSearch;
+    const matchesBookingStatus = p.booking_status === 'Booked';
+    return matchesAdmin && matchesFilter && matchesSearch && matchesBookingStatus;
   });
 
   return (
@@ -345,8 +346,8 @@ const PaymentsTab = () => {
                   <input
                     type="number"
                     value={row.agent_share}
-                    onChange={e => handleInputChange(row.id, 'agent_share', Number(e.target.value))}
-                    className="border rounded-md px-2 py-1 w-28"
+                    onChange={e =>(row.id, 'agent_share', Number(e.target.value))}
+                    className="border rounded-md px-2 py-1 w-28 bg-gray-200 cursor-not-allowed"
                   />
                 </td>
                 <td className="px-4 py-2">

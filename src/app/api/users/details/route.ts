@@ -1,12 +1,10 @@
-import { NextResponse } from "next/server";
-import jwt from "jsonwebtoken";
+import { NextRequest, NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
 import { executeQuery } from "@/lib/db";
 
-export async function GET(req: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const authHeader = req.headers.get("authorization");
-    const token = authHeader?.startsWith("Bearer ") ? authHeader.substring(7) : null;
-
+    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
     if (!token) {
       return NextResponse.json(
         { error: "Unauthorized: Missing token" },
@@ -14,11 +12,11 @@ export async function GET(req: Request) {
       );
     }
 
-    const decoded: any = jwt.verify(token, process.env.JWT_SECRET!);
+    const userId = token.user_id as string;
 
     const [users] = await executeQuery(
       "SELECT user_id, name, email, phone, role, profile_pic FROM users_kp_db WHERE user_id = ?",
-      [decoded.user_id]
+      [userId]
     );
 
     if (!users || users.length === 0) {

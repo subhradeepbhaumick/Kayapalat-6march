@@ -88,8 +88,8 @@ export async function GET(request: NextRequest) {
     
     const dataParams = [...queryParams, limit, offset];
     
-    const blogsResult = await executeQuery(dataQuery, dataParams) as any[];
-    const countResult = await executeQuery(countQuery, queryParams) as any[];
+    const [blogsResult] = await executeQuery(dataQuery, dataParams);
+    const [countResult] = await executeQuery(countQuery, queryParams);
 
     const total = countResult[0].total;
 

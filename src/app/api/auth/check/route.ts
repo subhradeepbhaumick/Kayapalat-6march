@@ -1,37 +1,25 @@
-import { NextResponse } from "next/server";
-import jwt from "jsonwebtoken";
+import { NextResponse, NextRequest } from "next/server";
+import { getToken } from "next-auth/jwt";
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   try {
-    const authHeader = req.headers.get("authorization");
+    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    if (!token) {
       return NextResponse.json(
         { error: "Unauthorized: Missing token" },
         { status: 401 }
       );
     }
 
-    const token = authHeader.split(" ")[1];
-
-    let decoded: any;
-    try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET!);
-    } catch (err) {
-      return NextResponse.json(
-        { error: "Invalid or expired token" },
-        { status: 401 }
-      );
-    }
-
     return NextResponse.json({
       user: {
-        id: decoded.id,
-        name: decoded.name,
-        email: decoded.email,
-        role: decoded.role,
-        phone: decoded.phone,
-        whatsapp: decoded.whatsapp,
+        id: token.user_id,
+        name: token.name,
+        email: token.email,
+        role: token.role,
+        phone: token.phone,
+        whatsapp: token.whatsapp,
       },
     });
   } catch (error) {

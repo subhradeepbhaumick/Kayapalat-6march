@@ -12,7 +12,7 @@ export async function GET() {
     const totalLeads = leadsResult[0]?.totalLeads || 0;
 
     // Total Revenue: sum of project_value from projects table
-    const [revenueResult] = await executeQuery("SELECT SUM(project_value) as totalRevenue FROM projects");
+    const [revenueResult] = await executeQuery("SELECT SUM(project_value) as totalRevenue FROM projects WHERE booking_status = 'Booked'");
     const totalRevenue = revenueResult[0]?.totalRevenue || 0;
 
     return NextResponse.json({

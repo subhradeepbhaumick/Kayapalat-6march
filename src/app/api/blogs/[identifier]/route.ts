@@ -3,7 +3,6 @@
 
 import { NextResponse, NextRequest } from 'next/server';
 import { pool, generateSlug, executeQuery, sanitizeContentLinks } from '@/lib/db';
-import { notFound } from 'next/navigation';
 import { unlink } from 'fs/promises';
 import { join } from 'path';
 // --- HANDLER FOR GETTING A SINGLE BLOG (LOGIC FROM [slug]/route.ts) ---
@@ -18,15 +17,8 @@ function findImageUrls(htmlContent: string): string[] {
   return matches.map(match => match[1]).filter(url => !url.startsWith('data:image'));
 }
 
-// Add a small type for the route context so the second argument matches Next's expectation
-type BlogIdentifierRouteContext = {
-  params: { identifier: string };
-};
-
-// Ensure your handlers use the `context` object form: (req, context: BlogIdentifierRouteContext)
-export async function GET(req: Request, context: BlogIdentifierRouteContext) {
-  const { params } = context;
-  const { identifier } = params;
+export async function GET(req: Request, { params }: { params: Promise<{ identifier: string }> }) {
+  const { identifier } = await params;
   const isNumericId = /^\d+$/.test(identifier);
 
   try {
@@ -35,13 +27,16 @@ export async function GET(req: Request, context: BlogIdentifierRouteContext) {
       SELECT nb.*, bc.name AS category_name
       FROM new_blogs nb
       LEFT JOIN blog_categories bc ON nb.category_id = bc.id
-      WHERE ${isNumericId ? 'nb.id' : 'nb.slug'} = ?;
+      WHERE ${isNumericId ? 'nb.id' : 'TRIM(nb.slug)'} = ${isNumericId ? '?' : 'TRIM(?)'}  AND nb.deleted_at IS NULL;
     `;
     const [blogs]: any[] = await executeQuery(blogQuery, [identifier]);
+if (blogs.length === 0) {
+  return NextResponse.json(
+    { error: 'Blog not found' },
+    { status: 404 }
+  );
+}
 
-    if (blogs.length === 0) {
-      notFound();
-    }
     const blog = blogs[0];
 
     // Query 2: Get all associated tag IDs
@@ -51,20 +46,28 @@ export async function GET(req: Request, context: BlogIdentifierRouteContext) {
     blog.tag_ids = tagIds;
 
     // --- THIS IS THE CORRECTED LOGIC ---
-    if (tagIds.length > 0) {
-      // 1. Create the correct number of '?' placeholders
-      const placeholders = tagIds.map(() => '?').join(',');
-      // 2. Build the query with the placeholders
-      const tagsQuery = `SELECT id, name, slug FROM blog_tags WHERE id IN (${placeholders})`;
-      // 3. Execute the query with the flat array of IDs
-      const [tags] = await executeQuery(tagsQuery, tagIds);
-      blog.tags = tags;
-    } else {
-      blog.tags = []; // Ensure tags is an empty array if there are no tags
+    try {
+      if (tagIds.length > 0) {
+        // 1. Create the correct number of '?' placeholders
+        const placeholders = tagIds.map(() => '?').join(',');
+        // 2. Build the query with the placeholders
+        const tagsQuery = `SELECT id, name, slug FROM blog_tags WHERE id IN (${placeholders})`;
+        // 3. Execute the query with the flat array of IDs
+        const [tags] = await executeQuery(tagsQuery, tagIds);
+        blog.tags = tags;
+      } else {
+        blog.tags = []; // Ensure tags is an empty array if there are no tags
+      }
+    } catch (tagError) {
+      console.error('Error fetching tags:', tagError);
+      blog.tags = []; // Set empty tags if query fails
     }
 
     // Fire-and-forget view count update
-    executeQuery(`UPDATE new_blogs SET view_count = view_count + 1 WHERE id = ?`, [blog.id]);
+executeQuery(
+  `UPDATE new_blogs SET view_count = view_count + 1 WHERE id = ?`,
+  [blog.id]
+).catch(() => {});
 
     return NextResponse.json(blog);
 
@@ -82,9 +85,10 @@ export async function GET(req: Request, context: BlogIdentifierRouteContext) {
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { identifier: string } }
+  { params }: { params: Promise<{ identifier: string }> }
 ) {
-    const blogId = parseInt(params.identifier, 10);
+    const { identifier } = await params;
+    const blogId = parseInt(identifier, 10);
     if (isNaN(blogId)) {
         return NextResponse.json({ error: 'Invalid blog ID.' }, { status: 400 });
     }
@@ -92,7 +96,7 @@ export async function PUT(
     let connection;
     try {
         connection = await pool.getConnection(); 
-        await executeQuery('START TRANSACTION', [], connection);
+await connection.beginTransaction();
 
         // Step 1: Get the current state of the blog from the DB for comparison
         const [oldBlogs]: any[] = await executeQuery('SELECT image, content FROM new_blogs WHERE id = ?', [blogId], connection);
@@ -159,13 +163,13 @@ export async function PUT(
        }
 
         
-        await executeQuery('COMMIT', [], connection);
+await connection.commit();
 
         return NextResponse.json({ message: 'Blog updated successfully', blogId });
 
     } catch (error: any) {
         if (connection) {
-            await executeQuery('ROLLBACK', [], connection);
+await connection.rollback();
         }
         console.error(`API PUT Error for blog ID ${blogId}:`, error);
         return NextResponse.json({ error: 'Failed to update blog post.', details: error.message }, { status: 500 });
@@ -183,9 +187,10 @@ export async function PUT(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { identifier: string } }
+  { params }: { params: Promise<{ identifier: string }> }
 ) {
-  const blogId = parseInt(params.identifier, 10);
+  const { identifier } = await params;
+  const blogId = parseInt(identifier, 10);
   if (isNaN(blogId)) {
     return NextResponse.json({ error: 'Invalid blog ID.' }, { status: 400 });
   }
@@ -193,7 +198,7 @@ export async function DELETE(
   let connection;
   try {
     connection = await pool.getConnection();
-    await executeQuery('START TRANSACTION', [], connection);
+await connection.beginTransaction();
 
     // 1. Get blog data to find all associated images BEFORE deleting
     const [blogs]: any[] = await executeQuery('SELECT image, content FROM new_blogs WHERE id = ?', [blogId], connection);
@@ -216,7 +221,7 @@ export async function DELETE(
     await executeQuery('DELETE FROM new_blogs WHERE id = ?', [blogId], connection);
 
     // 4. Commit the transaction to finalize DB changes
-    await executeQuery('COMMIT', [], connection);
+await connection.commit();
 
     // 5. Asynchronously delete image files from server AFTER DB commit
     for (const publicPath of imagesToDelete) {
@@ -235,7 +240,7 @@ export async function DELETE(
 
   } catch (error: any) {
     if (connection) {
-      await executeQuery('ROLLBACK', [], connection);
+await connection.rollback();
     }
     console.error(`API DELETE Error for blog ID ${blogId}:`, error);
     return NextResponse.json({ error: 'Failed to delete blog post.', details: error.message }, { status: 500 });
@@ -245,4 +250,3 @@ export async function DELETE(
     }
   }
 }
-

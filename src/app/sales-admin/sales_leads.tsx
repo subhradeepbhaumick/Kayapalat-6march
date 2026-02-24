@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, UserPlus } from 'lucide-react';
 import RemarkModal from "./RemarkModal";
+import { useSession } from 'next-auth/react';
 
 type Tab = 'cold' | 'site' | 'booking' | 'booked';
 
@@ -42,6 +43,7 @@ type Lead = {
 };
 
 const LeadsTab = () => {
+  const { data: session, status: sessionStatus } = useSession();
   const [activeTab, setActiveTab] = useState<Tab>('cold');
   const [status, setStatus] = useState('all');
   const [showEntries, setShowEntries] = useState('all');
@@ -51,21 +53,23 @@ const LeadsTab = () => {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [seenLeads, setSeenLeads] = useState<Set<number>>(new Set());
+  const [showBookedPopup, setShowBookedPopup] = useState(false);
+
 
   useEffect(() => {
+    if (sessionStatus === 'loading') return;
+
+    if (!session || !session.user) {
+      console.warn('No session found');
+      setLoading(false);
+      return;
+    }
+
     const fetchProjects = async () => {
       try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          console.warn('No token found');
-          setLoading(false);
-          return;
-        }
         const res = await fetch('/api/sales-admin/projects', {
           method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
+          credentials: 'include',
         });
         const data = await res.json();
         if (data.projects) {
@@ -105,7 +109,7 @@ const LeadsTab = () => {
     };
 
     fetchProjects();
-  }, []);
+  }, [sessionStatus, session]);
 
   const [search, setSearch] = useState('');
   const [isPopupOpen, setIsPopupOpen] = useState(false);
@@ -116,21 +120,13 @@ const LeadsTab = () => {
   useEffect(() => {
     if (isPopupOpen && currentLeadId) {
       const fetchRemarks = async () => {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          console.warn('No token found');
-          return;
-        }
-
         const currentLead = leads.find(lead => lead.id === currentLeadId);
         if (!currentLead) return;
 
         try {
           const res = await fetch(`/api/sales-admin/remarks?appointment_id=${currentLead.AppoinmentID}`, {
             method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            },
+            credentials: 'include',
           });
           const data = await res.json();
           if (data.remarks) {
@@ -235,12 +231,6 @@ const LeadsTab = () => {
 
   // Handle admin input changes
   const handleChange = async (id: number, field: string, value: string) => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      console.warn('No token found');
-      return;
-    }
-
     // Mark as seen when modified
     setSeenLeads(prev => new Set([...prev, id]));
 
@@ -291,9 +281,9 @@ const LeadsTab = () => {
       const res = await fetch('/api/sales-admin/projects', {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({
           appointment_id: leads.find(lead => lead.id === id)?.AppoinmentID,
           updates,
@@ -320,12 +310,6 @@ const LeadsTab = () => {
   };
   // Handle book button click
   const handleBookClick = async (id: number) => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      console.warn('No token found');
-      return;
-    }
-
     const lead = leads.find(lead => lead.id === id);
     if (!lead) return;
 
@@ -360,9 +344,9 @@ const LeadsTab = () => {
       const res = await fetch('/api/sales-admin/projects', {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({
           appointment_id: lead.AppoinmentID,
           updates,
@@ -374,14 +358,10 @@ const LeadsTab = () => {
     } catch (error) {
       console.error('Error updating booking status:', error);
     }
+     // 🎉 Show popup
+    setShowBookedPopup(true);
   };
   const handleShareChange = async (id: number, field: string, value: string) => {
-  const token = localStorage.getItem('token');
-  if (!token) {
-    console.warn('No token found');
-    return;
-  }
-
   setLeads((prevLeads) =>
     prevLeads.map((lead) => {
       if (lead.id === id) {
@@ -416,9 +396,9 @@ const LeadsTab = () => {
     const res = await fetch('/api/sales-admin/projects', {
       method: 'PUT',
       headers: {
-        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
+      credentials: 'include',
       body: JSON.stringify({
         appointment_id: leads.find(lead => lead.id === id)?.AppoinmentID,
         updates,
@@ -446,12 +426,6 @@ const LeadsTab = () => {
   // Handle save remark
   const handleSaveRemark = async () => {
     if (currentLeadId && currentComment.trim()) {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        console.warn('No token found');
-        return;
-      }
-
       const currentLead = leads.find(lead => lead.id === currentLeadId);
       if (!currentLead) return;
 
@@ -459,9 +433,9 @@ const LeadsTab = () => {
         const res = await fetch('/api/sales-admin/remarks', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
+          credentials: 'include',
           body: JSON.stringify({
             appointment_id: currentLead.AppoinmentID,
             remark: currentComment.trim(),
@@ -472,9 +446,7 @@ const LeadsTab = () => {
           // Refetch remarks to update the modal
           const fetchRes = await fetch(`/api/sales-admin/remarks?appointment_id=${currentLead.AppoinmentID}`, {
             method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            },
+            credentials: 'include',
           });
           const data = await fetchRes.json();
           if (data.remarks) {
@@ -587,7 +559,8 @@ const LeadsTab = () => {
               <option value="all">All</option>
               <option value="Upcoming">Upcoming</option>
               <option value="Not Responding">Not Responding</option>
-              <option value="No Show">No Show</option>
+              <option value="Not Show">Not Show</option>
+              <option value="Not Show">Responding</option>
               <option value="Booked Somewhere Else">Booked Somewhere Else</option>
               <option value="Booked">Booked</option>
               <option value="By Time Ascending">By Time Ascending</option>
@@ -812,7 +785,7 @@ const LeadsTab = () => {
                         >
                           <option>Upcoming</option>
                           <option>Not Responding</option>
-                          <option>No Show</option>
+                          <option>Not Show</option>
                           <option>Booked Somewhere Else</option>
                           <option>Confirmed</option>
                         </select>
@@ -907,7 +880,7 @@ const LeadsTab = () => {
                         >
                           <option>Upcoming</option>
                           <option>Not Responding</option>
-                          <option>No Show</option>
+                          <option>Not Show</option>
                           <option>Booked Somewhere Else</option>
                           <option>Confirmed</option>
                         </select>
@@ -996,8 +969,9 @@ const LeadsTab = () => {
                         >
                           <option value="">Select</option>
                           <option>Upcoming</option>
+                          <option>Responding</option>
                           <option>Not Responding</option>
-                          <option>No Show</option>
+                          <option>Not Show</option>
                           <option>Booked Somewhere Else</option>
                           <option>Booked</option>
                           <option>Confirmed</option>
@@ -1092,7 +1066,7 @@ const LeadsTab = () => {
                         <option value="">Select</option>
                         <option>Upcoming</option>
                         <option>Not Responding</option>
-                        <option>No Show</option>
+                        <option>Not Show</option>
                         <option>Booked Somewhere Else</option>
                         <option>Booked</option>
                         <option>By Time Ascending</option>
@@ -1150,6 +1124,25 @@ const LeadsTab = () => {
         }}
         onClose={closePopup}
       />
+      {showBookedPopup && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/60 bg-opacity-50 z-50">
+          <div className="bg-white rounded-xl shadow-lg p-6 w-[350px] text-center">
+            <h2 className="text-xl font-bold text-green-700 mb-3">🎉 Lead Booked!</h2>
+            <p className="text-gray-700 mb-6">
+              Your lead has been successfully booked.<br />
+              You can now view it in the <strong>"Booked"</strong> tab.
+            </p>
+
+            <button
+              onClick={() => setShowBookedPopup(false)}
+              className="px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
+
 
     </>
   );

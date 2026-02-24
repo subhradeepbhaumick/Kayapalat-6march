@@ -118,7 +118,8 @@ export function SliderForm({ mode, slider, isOpen, onOpenChange, onSave }: Slide
                     fetch('/api/slider/pages')
                 ]);
                 setCategories(await catRes.json());
-                setPages(await pagesRes.json());
+-               setPages(await pagesRes.json());
+                
             } catch (error) { toast.error("Failed to load categories/pages."); }
         };
 
@@ -152,6 +153,10 @@ export function SliderForm({ mode, slider, isOpen, onOpenChange, onSave }: Slide
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!formData.category_id || !formData.page_id || !formData.testimonial_name) {
+            toast.error("Please fill in all required fields (Category, Page, Name).");
+            return;
+        }
         setIsSubmitting(true);
         try {
             const uploadImage = async (file: File | null): Promise<string | undefined> => {

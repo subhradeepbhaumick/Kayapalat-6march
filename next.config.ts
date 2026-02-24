@@ -8,6 +8,7 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   devIndicators: false,
+  // Remove output: 'export' to enable server-side rendering
   images: {
     domains: [
       "kayapalat.co",             // ✅ allow your own domain
@@ -17,27 +18,15 @@ const nextConfig: NextConfig = {
       "i.pravatar.cc",
       "placehold.co",
     ],
-  },
-  experimental: {
-    turbo: {
-      resolveAlias: {},
-      rules: {},
-    },
-  },
-  webpack: (config, { isServer }) => {
-    if (isServer) {
-      config.externals = config.externals || [];
-      config.externals.push({
-        mysql2: 'commonjs mysql2',
-      });
-    } else {
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        net: false,
-        tls: false,
-      };
-    }
-    return config;
+    // Allow serving images from the same domain for uploaded files
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'kayapalat.co',
+        port: '',
+        pathname: '/**',
+      },
+    ],
   },
 
   // ✅ Add redirects here
@@ -48,7 +37,7 @@ const nextConfig: NextConfig = {
         destination: "/about",
         permanent: true,
       },
-     
+
       {
         source: "/blog/false-ceiling-design-for-office",
         destination: "/blogs/false-ceiling-design-for-office",
@@ -59,7 +48,7 @@ const nextConfig: NextConfig = {
         destination: "/blogs/how-to-choose-the-perfect-wardrobe",
         permanent: true,
       },
-     
+
       {
         source: "/simple-kitchen-design-ideas.php",
         destination: "/blogs/simple-kitchen-design-ideas",

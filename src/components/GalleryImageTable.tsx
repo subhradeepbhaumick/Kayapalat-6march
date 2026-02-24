@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useDebounce } from 'use-debounce';
+import AvatarFallback from './AvatarFallback';
 
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from "@/components/ui/select";
@@ -130,17 +131,22 @@ export function GalleryImageTable() {
 
     return (
         <>
-            <div className="rounded-lg border bg-white/70 text-card-foreground shadow-sm p-4">
-                {/* --- FIX: Changed to flexbox for better layout --- */}
-                <div className="flex flex-col md:flex-row items-center gap-4 mb-4">
-                    <div className="relative flex-grow w-full">
+            <div className="rounded-lg border bg-white/70 text-card-foreground shadow-sm p-2 md:p-4">
+                {/* Mobile responsive filter section */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 md:gap-4 mb-4">
+                    <div className="relative grow w-full">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input placeholder="Search by title or category..." className="pl-10" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                        <Input 
+                            placeholder="Search by title or category..." 
+                            className="pl-10 w-full" 
+                            value={searchTerm} 
+                            onChange={(e) => setSearchTerm(e.target.value)} 
+                        />
                     </div>
-                    <div className="flex items-center gap-4 w-full md:w-auto">
+                    <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                         <Select value={selectedCategory} onValueChange={(value) => setSelectedCategory(value === "all" ? "" : value)}>
-                            <SelectTrigger className="w-full md:w-[180px]  bg-[#00423D]/15 z-10 hover:bg-[#00423D]/25 active:bg-[#00423D]/35 transition-colors duration-200">
-                                <SelectValue placeholder="All Categories" />
+                            <SelectTrigger className="w-full sm:w-[140px] md:w-[180px] bg-[#00423D]/15 z-10 hover:bg-[#00423D]/25 active:bg-[#00423D]/35 transition-colors duration-200 h-9 sm:h-10">
+                                <SelectValue placeholder="Categories" />
                             </SelectTrigger>
                             <SelectPortal>
                                 <SelectContent position="popper" className="bg-white border border-gray-200 shadow-lg">
@@ -152,8 +158,8 @@ export function GalleryImageTable() {
                             </SelectPortal>
                         </Select>
                         <Select value={selectedStatus} onValueChange={(value) => setSelectedStatus(value === "all" ? "" : value)}>
-                            <SelectTrigger className="w-full md:w-[150px] bg-[#00423D]/15 z-10 hover:bg-[#00423D]/25 active:bg-[#00423D]/35 transition-colors duration-200">
-                                <SelectValue placeholder="All Statuses" />
+                            <SelectTrigger className="w-full sm:w-[120px] md:w-[150px] bg-[#00423D]/15 z-10 hover:bg-[#00423D]/25 active:bg-[#00423D]/35 transition-colors duration-200 h-9 sm:h-10">
+                                <SelectValue placeholder="Status" />
                             </SelectTrigger>
                             <SelectPortal>
                                 <SelectContent position="popper" className="bg-white border border-gray-200 shadow-lg">
@@ -164,8 +170,8 @@ export function GalleryImageTable() {
                             </SelectPortal>
                         </Select>
                         <Select value={selectedFeatured} onValueChange={(value) => setSelectedFeatured(value === "all" ? "" : value)}>
-                            <SelectTrigger className="w-full md:w-[150px] bg-[#00423D]/15 z-10 hover:bg-[#00423D]/25 active:bg-[#00423D]/35 transition-colors duration-200">
-                                <SelectValue placeholder="Is Featured" />
+                            <SelectTrigger className="w-full sm:w-[120px] md:w-[150px] bg-[#00423D]/15 z-10 hover:bg-[#00423D]/25 active:bg-[#00423D]/35 transition-colors duration-200 h-9 sm:h-10">
+                                <SelectValue placeholder="Featured" />
                             </SelectTrigger>
                             <SelectPortal>
                                 <SelectContent position="popper" className="bg-white border border-gray-200 shadow-lg">
@@ -182,14 +188,14 @@ export function GalleryImageTable() {
                     <Table>
                         <TableHeader className="bg-muted/50">
                             <TableRow>
-                                <TableHead>Image</TableHead>
+<TableHead className="w-[60px]">Image</TableHead>
                                 <TableHead>Title</TableHead>
-                                <TableHead>Designer</TableHead>
-                                <TableHead>Category</TableHead>
-                                <TableHead>Likes</TableHead>
-                                <TableHead>Date</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead>Actions</TableHead>
+                                <TableHead className="hidden md:table-cell">Designer</TableHead>
+                                <TableHead className="hidden lg:table-cell">Category</TableHead>
+                                <TableHead className="hidden md:table-cell">Likes</TableHead>
+                                <TableHead className="hidden sm:table-cell">Date</TableHead>
+<TableHead className="w-[100px]">Status</TableHead>
+                                <TableHead className="w-[100px]">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -198,31 +204,50 @@ export function GalleryImageTable() {
                             ) : images.length > 0 ? (
                                 images.map((image) => (
                                     <TableRow key={image.id}>
-                                        <TableCell><Image src={image.image_path} alt={image.title} width={48} height={48} className="rounded-md object-cover aspect-square" /></TableCell>
+                                        <TableCell>
+                                            <Image
+                                                src={image.image_path || '/placeholder_image.png'}
+                                                alt={image.title}
+                                                width={48}
+                                                height={48}
+                                                className="rounded-md object-cover aspect-square w-10 h-10 sm:w-12 sm:h-12"
+                                            />
+                                        </TableCell>
                                         <TableCell className="font-medium">
-                                            {image.title.length > 40
-                                                ? image.title.substring(0, 40) + " ..."
-                                                : image.title}
+                                            <span className="block max-w-[150px] sm:max-w-[200px] md:max-w-none truncate">
+                                                {image.title.length > 25
+                                                    ? image.title.substring(0, 25) + "..."
+                                                    : image.title}
+                                            </span>
                                         </TableCell>
 
-                                        <TableCell>
+                                        <TableCell className="hidden md:table-cell">
                                             <div className="flex items-center gap-2">
-                                                <Image src={image.designer_dp_path || '/user.png'} alt={image.designer_name || ''} width={32} height={32} className="rounded-full object-cover" />
-                                                <div>
-                                                    <p className="font-semibold text-sm">{image.designer_name}</p>
-                                                    <p className="text-xs text-muted-foreground">{image.designer_designation}</p>
+                                                <AvatarFallback className="w-6 h-6 sm:w-8 sm:h-8" />
+                                                <div className="hidden lg:block">
+                                                    <p className="font-semibold text-sm">{image.designer_name || 'Team KayaPalat'}</p>
+                                                    <p className="text-xs text-muted-foreground">{image.designer_designation || 'Designer | Architect'}</p>
+                                                </div>
+                                                <div className="lg:hidden">
+                                                    <p className="text-xs font-medium">{image.designer_name || 'Team KayaPalat'}</p>
                                                 </div>
                                             </div>
                                         </TableCell>
-                                        <TableCell><Badge variant="outline">{image.category_name}</Badge></TableCell>
-                                        <TableCell className="font-medium">{formatLikes(image.likes)}</TableCell>
-                                        <TableCell>{new Date(image.created_at).toLocaleDateString()}</TableCell>
-                                        <TableCell><Badge className={image.status === 'published' ? "bg-green-100 text-green-800" : "bg-orange-100 text-orange-800"}>{image.status}</Badge></TableCell>
+                                        <TableCell className="hidden lg:table-cell"><Badge variant="outline" className="text-xs">{image.category_name}</Badge></TableCell>
+                                        <TableCell className="hidden md:table-cell font-medium text-sm">{formatLikes(image.likes)}</TableCell>
+                                        <TableCell className="hidden sm:table-cell text-sm">{new Date(image.created_at).toLocaleDateString()}</TableCell>
+                                        <TableCell><Badge className={`text-xs py-0.5 px-2 ${image.status === 'published' ? "bg-green-100 text-green-800" : "bg-orange-100 text-orange-800"}`}>{image.status === 'published' ? 'Published' : 'Draft'}</Badge></TableCell>
                                         <TableCell>
-                                            <div className="flex items-center space-x-4">
-                                                <Link href={`/gallery?image=${slugify(image.title)}`} target="_blank" aria-label="View image on site"><Eye className="h-5 w-5 text-blue-600 cursor-pointer" /></Link>
-                                                <button onClick={() => handleEditClick(image)} aria-label="Edit image"><Pencil className="h-5 w-5 text-yellow-600 cursor-pointer" /></button>
-                                                <button onClick={() => handleDeleteClick(image)} aria-label="Delete image"><Trash2 className="h-5 w-5 text-red-600 cursor-pointer" /></button>
+                                            <div className="flex items-center gap-1 sm:gap-2">
+                                                <Link href={`/gallery?image=${slugify(image.title)}`} target="_blank" aria-label="View image" className="p-1.5 sm:p-1 hover:bg-blue-50 rounded transition-colors">
+                                                    <Eye className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
+                                                </Link>
+                                                <button onClick={() => handleEditClick(image)} aria-label="Edit image" className="p-1.5 sm:p-1 hover:bg-yellow-50 rounded transition-colors">
+                                                    <Pencil className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-600" />
+                                                </button>
+                                                <button onClick={() => handleDeleteClick(image)} aria-label="Delete image" className="p-1.5 sm:p-1 hover:bg-red-50 rounded transition-colors">
+                                                    <Trash2 className="h-4 w-4 sm:h-5 sm:w-5 text-red-600" />
+                                                </button>
                                             </div>
                                         </TableCell>
                                     </TableRow>
@@ -236,7 +261,7 @@ export function GalleryImageTable() {
             </div>
 
             <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
-                <AlertDialogContent>
+                <AlertDialogContent className="bg-white dark:bg-gray-900 border shadow-xl rounded-lg">
                     <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete this image.</AlertDialogDescription></AlertDialogHeader>
                     <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction></AlertDialogFooter>
                 </AlertDialogContent>

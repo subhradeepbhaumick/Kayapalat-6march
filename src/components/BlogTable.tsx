@@ -194,7 +194,7 @@ export function BlogTable() {
                                         <TableCell className="p-2 px-4">
                                             <Image
                                                 src={blog.image || 'https://placehold.co/400x400/e2e8f0/e2e8f0?text=.'}
-                                                alt={blog.title}
+                                                alt={`Blog post image for ${blog.title}`}
                                                 width={48}
                                                 height={48}
                                                 className="rounded-md object-cover aspect-square"

@@ -1,7 +1,7 @@
 // File: src/app/api/image-slider/route.ts
 
 import { NextResponse, NextRequest } from 'next/server';
-import { executeQuery, pool } from '@/lib/db'; // Import pool for the POST function transaction
+import { executeQuery } from '@/lib/db'; // Import pool for the POST function transaction
 
 export async function GET(request: NextRequest) {
   try {
@@ -52,9 +52,18 @@ export async function POST(request: Request) {
   try {
     const data = await request.json();
     const { before_image, after_image, testimonial_name, designation, rating, comment, testimonial_dp, category_id, page_id ,status } = data;
-    
-    if (!before_image || !after_image || !testimonial_name || !page_id || !designation || !rating || !comment || !testimonial_dp || !status || !category_id) {
-      return NextResponse.json({ error: 'Missing required fields.' }, { status: 400 });
+
+    const requiredFields = [
+      'before_image', 'after_image', 'testimonial_name', 'page_id',
+      'designation', 'rating', 'comment', 'testimonial_dp', 'status', 'category_id'
+    ];
+    const missingFields = requiredFields.filter(field => data[field] == null); // Using == null checks for both null and undefined
+
+    if (missingFields.length > 0) {
+      return NextResponse.json(
+        { error: `Missing required fields: ${missingFields.join(', ')}` },
+        { status: 400 }
+      );
     }
 
     const query = `
@@ -69,4 +78,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Failed to create slider entry.', details: error.message }, { status: 500 });
   }
 }
-

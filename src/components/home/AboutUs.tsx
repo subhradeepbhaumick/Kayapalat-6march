@@ -246,9 +246,12 @@ export default function PricingCreative() {
             <div className="mb-6 text-xl font-extrabold text-[#00423D]">
               Starting ₹ 15,000 only
             </div>
-            <Link href="/contact-us" className="w-full" legacyBehavior>
-              <InteractiveButton className="">Choose This Plan</InteractiveButton>
+            <Link href="/contact-us" className="w-full">
+              <InteractiveButton>
+                Choose This Plan
+              </InteractiveButton>
             </Link>
+
           </div>
         </motion.div>
 
@@ -293,7 +296,7 @@ export default function PricingCreative() {
             <div className="mb-6 text-xl font-extrabold text-[#00423D]">
               Starting ₹ 3,00,000 only
             </div>
-            <Link href="/contact-us" className="w-full" legacyBehavior>
+            <Link href="/contact-us" className="w-full" >
               <InteractiveButton className="">Choose This Plan</InteractiveButton>
             </Link>
           </div>
@@ -332,9 +335,12 @@ export default function PricingCreative() {
             <div className="mb-6 text-xl font-extrabold text-[#00423D]">
               Starting ₹ 50,000 only
             </div>
-            <Link href="/contact-us" className="w-full" legacyBehavior>
-              <InteractiveButton className="">Choose This Plan</InteractiveButton>
+            <Link href="/contact-us" className="w-full">
+              <InteractiveButton>
+                Choose This Plan
+              </InteractiveButton>
             </Link>
+
           </div>
         </motion.div>
       </div>

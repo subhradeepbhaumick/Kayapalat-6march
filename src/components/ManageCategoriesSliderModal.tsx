@@ -24,9 +24,9 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Label } from './ui/label';
+import { Label } from '@/components/ui/label';
 import { FaGrip } from 'react-icons/fa6';
-import { AVAILABLE_ICONS } from './ICONS';
+import { AVAILABLE_ICONS } from '@/components/ICONS';
 
 interface Category { id: number; name: string; icon_name: string; }
 interface ManageCategoriesModalProps { isOpen: boolean; onOpenChange: (isOpen: boolean) => void; }

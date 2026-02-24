@@ -14,7 +14,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
-  login: (login: string, password: string) => Promise<boolean>;
+  login: (login: string, password: string) => Promise<User | null>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -27,18 +27,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchUser = useCallback(async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        setUser(null);
-        setIsAuthenticated(false);
-        return;
-      }
-
       const response = await fetch('/api/users/details', {
         method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        credentials: 'include',
       });
 
       if (response.ok) {
@@ -48,12 +39,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         setUser(null);
         setIsAuthenticated(false);
-        localStorage.removeItem('token');
       }
     } catch {
       setUser(null);
       setIsAuthenticated(false);
-      localStorage.removeItem('token');
     }
   }, []);
 
@@ -67,27 +56,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ login: loginField, password }),
+        credentials: 'include',
       });
 
       if (response.ok) {
         const data = await response.json();
+        setUser(data.user);
+        setIsAuthenticated(true);
         localStorage.setItem('token', data.token);
-        await fetchUser();
-        return true;
+        return data.user;
       } else {
         const errorData = await response.json();
         console.error('Login failed:', errorData.error);
-        return false;
+        return null;
       }
     } catch (error) {
       console.error('Login error:', error);
-      return false;
+      return null;
     }
-  }, [fetchUser]);
+  }, []);
 
   const logout = useCallback(async () => {
     try {
-      const response = await fetch('/api/users/logout', {
+      const response = await fetch('/api/auth/logout', {
         method: 'POST',
       });
       if (response.ok) {
@@ -120,5 +111,5 @@ export function useAuth() {
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
-  return context;
+    return context;
 }

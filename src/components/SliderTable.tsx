@@ -1,4 +1,5 @@
 // File: src/app/admin/designs/_components/SliderTable.tsx
+// Admin Pannel - Our Creations Component
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -18,6 +19,45 @@ import { Switch } from '@/components/ui/switch';
 import { SliderForm } from './SliderForm';
 import { ManageCategoriesSliderModal } from './ManageCategoriesSliderModal';
 import { ManageSliderPagesModal } from './ManageSliderPagesModal';
+
+function PageAssignmentCheckboxes({ slider, pages, refresh }: { slider: Slider; pages: Page[]; refresh: () => void }) {
+  const handleToggle = async (page: Page) => {
+    const isAssigned = slider.page_name === page.name;
+
+    if (!isAssigned) {
+      await fetch(`/api/image-slider/${slider.id}/duplicate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ page_id: page.id }),
+      });
+    } else {
+      await fetch(`/api/image-slider/delete-by-original`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ original_id: slider.id, page_id: page.id }),
+      });
+    }
+
+    refresh();
+  };
+
+  return (
+    <div className="flex flex-col gap-1">
+      {pages
+        .filter((p: Page) => p.name.trim().toLowerCase() !== "gallery")
+        .map((p: Page) => (
+          <label key={p.id} className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={slider.page_name === p.name}
+              onChange={() => handleToggle(p)}
+            />
+            {p.name}
+          </label>
+        ))}
+    </div>
+  );
+}
 
 // Interfaces
 interface Slider {
@@ -150,7 +190,7 @@ export function SliderTable() {
     <>
       <div className="rounded-lg border bg-white/70 text-card-foreground shadow-sm p-4">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-4">
-          <div className="relative w-full md:w-auto md:flex-grow">
+          <div className="relative w-full md:w-auto md:grow">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search..."
@@ -223,27 +263,28 @@ export function SliderTable() {
                 <TableHead className='pl-4'>Page</TableHead>
                 <TableHead className='pl-6'>Date</TableHead>
                 <TableHead className='pl-4'>Status</TableHead>
+                <TableHead className="pl-8">Pages</TableHead>
                 <TableHead className="pl-8">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow><TableCell colSpan={7} className="h-24 text-center">Loading...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={8} className="h-24 text-center">Loading...</TableCell></TableRow>
               ) : filteredSliders.map((slider) => (
                 <TableRow key={slider.id}>
                   <TableCell className="flex justify-center gap-2 pl-6 pr-4 py-2 px-4">
-                    <div className="w-16 h-16 rounded-md overflow-hidden flex items-center justify-center flex-shrink-0">
+                    <div className="w-16 h-16 rounded-md overflow-hidden flex items-center justify-center shrink-0">
                       <Image
-                        src={slider.before_image}
+                        src={encodeURI(slider.before_image)}
                         alt="Before"
                         width={64}
                         height={64}
                         className="w-full h-full object-cover"
                       />
                     </div>
-                    <div className="w-16 h-16 rounded-md overflow-hidden flex items-center justify-center flex-shrink-0">
+                    <div className="w-16 h-16 rounded-md overflow-hidden flex items-center justify-center shrink-0">
                       <Image
-                        src={slider.after_image}
+                        src={encodeURI(slider.after_image)}
                         alt="After"
                         width={64}
                         height={64}
@@ -253,9 +294,9 @@ export function SliderTable() {
                   </TableCell>
                   <TableCell className="px-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0">
+                      <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center shrink-0">
                         <Image
-                          src={slider.testimonial_dp || '/placeholder-avatar.png'}
+                          src={encodeURI(slider.testimonial_dp || '/placeholder-avatar.png')}
                           alt={slider.testimonial_name}
                           width={32}
                           height={32}
@@ -273,10 +314,21 @@ export function SliderTable() {
                   <TableCell className="px-4">{new Date(slider.created_at).toLocaleDateString()}</TableCell>
                   <TableCell className="px-4">
                     <div className="flex items-center gap-2">
+                      <Switch
+                        checked={slider.status === 'published'}
+                        onCheckedChange={() => handleStatusToggle(slider.id, slider.status)}
+                      />
                       <Badge className={slider.status === 'published' ? "border-transparent bg-green-100 text-green-800 hover:bg-green-200" : "border-transparent bg-orange-100 text-orange-800 hover:bg-orange-200"}>
                         {slider.status}
                       </Badge>
                     </div>
+                  </TableCell>
+                  <TableCell className="px-4">
+                    <PageAssignmentCheckboxes
+                      slider={slider}
+                      pages={pages}
+                      refresh={fetchData}
+                    />
                   </TableCell>
                   <TableCell className="px-4 ">
                     <div className="flex items-center justify-start space-x-2">

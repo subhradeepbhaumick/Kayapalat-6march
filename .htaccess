@@ -18,13 +18,30 @@ Redirect 301 /how-to-design-a-room-that-grows-with-your-child.php https://kayapa
 Redirect 301 /simple-kitchen-design-ideas.php https://kayapalat.co/blog/simple-kitchen-design-ideas
 Redirect 301 /blog/space-saving-furniture-designs/ https://kayapalat.co/blogs/space-saving-furniture-designs
 
-#############################################
+
 # ✅ SPA Fallback (for React/Next.js static export)
-#############################################
+
 
 # Don’t rewrite existing files or directories
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
 
 # Redirect everything else to index.html
 RewriteRule ^ /index.html [L]
+
+
+
+; #############################################
+; # ✅ Next.js Server-Side Rendering Support
+; #############################################
+
+; # Handle Next.js API routes
+; RewriteCond %{REQUEST_FILENAME} !-f
+; RewriteCond %{REQUEST_FILENAME} !-d
+; RewriteCond %{REQUEST_URI} ^/api/
+; RewriteRule ^ api%{REQUEST_URI} [L]
+
+; # Handle Next.js pages and static files
+; RewriteCond %{REQUEST_FILENAME} !-f
+; RewriteCond %{REQUEST_FILENAME} !-d
+; RewriteRule ^(.*)$ /index.html [L]

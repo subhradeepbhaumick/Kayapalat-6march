@@ -1,5 +1,5 @@
 import SalesAdmin from './sales_admin';
 
-export default function SalesAdminPage() {
+export default function Page() {
   return <SalesAdmin />;
 }

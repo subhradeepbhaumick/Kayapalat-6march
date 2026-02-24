@@ -1,27 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getToken } from 'next-auth/jwt';
 import { executeQuery } from '@/lib/db';
-import { decodeToken } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
+    if (!token || !token.user_id) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       );
     }
 
-    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-    const decoded = decodeToken(token);
-    if (!decoded || !decoded.user_id) {
-      return NextResponse.json(
-        { error: 'Invalid token' },
-        { status: 401 }
-      );
-    }
-
-    const userId = decoded.user_id;
+    const userId = token.user_id;
 
     const query = `
       SELECT
@@ -35,7 +26,8 @@ export async function GET(request: NextRequest) {
         COALESCE(p.agent_share, 0) as agent_share,
         COALESCE(p.agent_paid, 0) as agent_paid,
         COALESCE(p.agent_due, 0) as due,
-        COALESCE(p.payment_status, 'Due') as payment_status
+        COALESCE(p.payment_status, 'Due') as payment_status,
+        p.booking_status
       FROM projects p
       LEFT JOIN agents a ON p.agent_id = a.agent_id
       WHERE p.admin_id = ?
@@ -60,24 +52,15 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
+    if (!token || !token.user_id) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       );
     }
 
-    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-    const decoded = decodeToken(token);
-    if (!decoded || !decoded.user_id) {
-      return NextResponse.json(
-        { error: 'Invalid token' },
-        { status: 401 }
-      );
-    }
-
-    const userId = decoded.user_id;
+    const userId = token.user_id;
 
     const { appointment_id, payment_status, agent_paid } = await request.json();
 

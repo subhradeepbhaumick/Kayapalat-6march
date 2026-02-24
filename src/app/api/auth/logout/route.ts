@@ -1,21 +1,28 @@
-import { NextResponse } from 'next/server';
+import { NextResponse } from "next/server";
 
+export async function GET() {
+  // Clear the token cookie
+  const res = NextResponse.redirect("/login"); // redirect to login page
+  res.cookies.set("token", "", {
+    path: "/",
+    expires: new Date(0), // expire immediately
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict"
+  });
+
+  return res;
+}
 export async function POST() {
-  try {
-    // clear the token cookie (HttpOnly) so middleware can't read it anymore
-    const res = NextResponse.json({ message: 'Logged out successfully' });
-    res.cookies.set('token', '', {
-      httpOnly: true,
-      path: '/',
-      maxAge: 0,
-      sameSite: 'lax'
-    });
-    return res;
-  } catch (error) {
-    console.error('Logout error:', error);
-    return NextResponse.json(
-      { error: 'Failed to logout' },
-      { status: 500 }
-    );
-  }
+  // Clear the token cookie for complete logout
+  const res = NextResponse.json({ message: "Logged out successfully" });
+  res.cookies.set("token", "", {
+    path: "/",
+    expires: new Date(0), // expire immediately
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict"
+  });
+
+  return res;
 }

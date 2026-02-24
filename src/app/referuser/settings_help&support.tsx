@@ -71,16 +71,17 @@ const HelpSupport = () => {
               <p className="text-sm text-gray-600">
                 179-A, Survey Park Rd<br />
                 Purba Diganta, Santoshpur<br />
-                Kolkata - 70075, WB, India
+                Kolkata - 700075, WB, India
               </p>
             </div>
             <div className="bg-gray-50 p-4 rounded-lg">
               <h3 className="font-semibold text-[#295A47] mb-2">Phone</h3>
-              <p className="text-sm text-gray-600">602-602-6026</p>
+              <p className="text-sm text-gray-600">60260-26026</p>
             </div>
             <div className="bg-gray-50 p-4 rounded-lg">
               <h3 className="font-semibold text-[#295A47] mb-2">Email</h3>
               <p className="text-sm text-gray-600">info@kayapalat.co</p>
+              <p className="text-sm text-gray-600">care@kayapalat.co</p>
             </div>
           </div>
         </div>

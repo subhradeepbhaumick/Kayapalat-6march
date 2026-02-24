@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { Filter, Search } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import { Filter, Search } from "lucide-react";
 
 const PaymentsTab = () => {
-  const [filter, setFilter] = useState('All');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [filter, setFilter] = useState("All");
+  const [searchTerm, setSearchTerm] = useState("");
   const [showPopup, setShowPopup] = useState(false);
 
   const [payments, setPayments] = useState<any[]>([]);
@@ -17,18 +17,15 @@ const PaymentsTab = () => {
 
   const fetchPayments = async () => {
     try {
-      const token = localStorage.getItem('token'); // Assuming token is stored in localStorage
-      const response = await fetch('/api/sales-admin/payments', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+      const response = await fetch("/api/sales-admin/payments", {
+        credentials: "include",
       });
       const result = await response.json();
       if (result.success) {
         setPayments(result.data);
       }
     } catch (error) {
-      console.error('Error fetching payments:', error);
+      console.error("Error fetching payments:", error);
     } finally {
       setLoading(false);
     }
@@ -38,14 +35,15 @@ const PaymentsTab = () => {
     setShowPopup(true);
   };
 
-
-
   const highlightText = (text: string) => {
     if (!searchTerm.trim()) return text;
-    const regex = new RegExp(`(${searchTerm})`, 'gi');
+    const regex = new RegExp(`(${searchTerm})`, "gi");
     return text.split(regex).map((part, i) =>
       regex.test(part) ? (
-        <span key={i} className="bg-yellow-200 text-black font-semibold px-1 rounded">
+        <span
+          key={i}
+          className="bg-yellow-200 text-black font-semibold px-1 rounded"
+        >
           {part}
         </span>
       ) : (
@@ -54,13 +52,14 @@ const PaymentsTab = () => {
     );
   };
 
-  const filteredPayments = payments.filter(p => {
-    const matchesFilter = filter === 'All' || p.payment_status === filter;
+  const filteredPayments = payments.filter((p) => {
+    const matchesFilter = filter === "All" || p.payment_status === filter;
     const matchesSearch =
       p.agent_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.agent_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.client_name.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesFilter && matchesSearch;
+    const matchesBookingStatus = p.booking_status === "Booked";
+    return matchesFilter && matchesSearch && matchesBookingStatus;
   });
 
   return (
@@ -80,7 +79,7 @@ const PaymentsTab = () => {
           <label className="text-gray-700 font-medium">Filter:</label>
           <select
             value={filter}
-            onChange={e => setFilter(e.target.value)}
+            onChange={(e) => setFilter(e.target.value)}
             className="border border-gray-300 rounded-md px-3 py-1 focus:outline-none focus:ring-2 focus:ring-[#295A47]"
           >
             <option value="All">All</option>
@@ -95,7 +94,7 @@ const PaymentsTab = () => {
             type="text"
             placeholder="Search by Agent ID, Agent or Client..."
             value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
+            onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full outline-none text-gray-700"
           />
         </div>
@@ -128,7 +127,9 @@ const PaymentsTab = () => {
                   <td className="px-4 py-2">{index + 1}</td>
                   <td className="px-4 py-2">{highlightText(row.agent_id)}</td>
                   <td className="px-4 py-2">{highlightText(row.agent_name)}</td>
-                  <td className="px-4 py-2">{highlightText(row.client_name)}</td>
+                  <td className="px-4 py-2">
+                    {highlightText(row.client_name)}
+                  </td>
                   <td className="px-4 py-2">{row.project_name}</td>
                   <td className="px-4 py-2">{row.client_estimate}</td>
                   <td className="px-4 py-2">{row.agent_share}</td>
@@ -139,17 +140,19 @@ const PaymentsTab = () => {
                       value={row.payment_status}
                       onChange={() => handleStatusChange()}
                       className={`px-2 py-1 rounded-md border text-white font-medium cursor-pointer ${
-                        row.payment_status === 'Paid'
-                          ? 'bg-green-500 border-green-600'
-                          : 'bg-red-500 border-red-600'
+                        row.payment_status === "Paid"
+                          ? "bg-green-500 border-green-600"
+                          : "bg-red-500 border-red-600"
                       }`}
                     >
-                      <option value="Paid" className="text-black">Paid</option>
-                      <option value="Due" className="text-black">Due</option>
+                      <option value="Paid" className="text-black">
+                        Paid
+                      </option>
+                      <option value="Due" className="text-black">
+                        Due
+                      </option>
                     </select>
                   </td>
-
-                  
                 </tr>
               ))
             ) : (
@@ -170,9 +173,12 @@ const PaymentsTab = () => {
       {showPopup && (
         <div className="fixed inset-0 bg-black/70 bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg shadow-lg max-w-sm w-full text-center">
-            <h2 className="text-lg font-semibold text-gray-800 mb-4">Access Denied</h2>
+            <h2 className="text-lg font-semibold text-gray-800 mb-4">
+              Access Denied
+            </h2>
             <p className="text-gray-600 mb-4">
-              You cannot change the payment status. Please contact the superadmin to make changes.
+              You cannot change the payment status. Please contact the
+              superadmin to make changes.
             </p>
             <button
               onClick={() => setShowPopup(false)}
@@ -183,7 +189,6 @@ const PaymentsTab = () => {
           </div>
         </div>
       )}
-
     </>
   );
 };

@@ -1,6 +1,17 @@
-# TODO: Add "Last Lead" Column to Agents Table
+# Supervisor Dashboard Navigation Updates
 
-- [ ] Modify src/app/api/superadmin/agents/route.ts to include lastLeadDate in agent response
-- [ ] Update Agent interface in src/app/superadmin/superadmin_agent.tsx to include lastLeadDate
-- [ ] Add "Last Lead" column to table header in superadmin_agent.tsx
-- [ ] Add "Last Lead" column data to table body in superadmin_agent.tsx
+## Tasks:
+- [ ] Create route page for My Projects (/supervisor/my-projects)
+- [ ] Create route page for Labour (/supervisor/labour)
+- [ ] Create route page for Expenses (/supervisor/expenses)
+- [ ] Create route page for Site Visit (/supervisor/site-visit)
+- [ ] Create route page for Issues (/supervisor/issue)
+- [ ] Update supervisor_dashboard.tsx sidebar to use router.push() for navigation
+
+## Routes Mapping:
+- Dashboard → /supervisor (existing)
+- My Projects → /supervisor/my-projects → supervisor_myprojects.tsx
+- Labour → /supervisor/labour → supervisor_labour.tsx
+- Expenses → /supervisor/expenses → supervisor_projectexpense.tsx
+- Site Visit → /supervisor/site-visit → supervisor_sitevisit.tsx
+- Issues → /supervisor/issue → supervisor_issue.tsx

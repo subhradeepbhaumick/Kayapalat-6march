@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
 import mysql from "mysql2/promise";
 
 // Create a MySQL connection pool
@@ -131,8 +132,25 @@ export async function POST(req: NextRequest) {
 // GET: Fetch leads with appointment_id, optionally filtered by agent_id
 export async function GET(req: NextRequest) {
   try {
+    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const userId = token.user_id as string;
+
+    // Check if user is referuser
+    const userRows = await pool.query('SELECT user_id FROM users_kp_db WHERE user_id = ? AND role = ?', [userId, 'referuser']);
+    if ((userRows as any)[0].length === 0) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+
     const { searchParams } = new URL(req.url);
     const agentId = searchParams.get('agent_id');
+
+    // Ensure referuser can only access their own leads
+    if (!agentId || agentId !== userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
 
     let query = `
       SELECT

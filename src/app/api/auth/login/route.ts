@@ -9,8 +9,8 @@ export async function POST(request: Request) {
 
     // Get user from database
     const [rows] = await executeQuery(
-      `SELECT id, name, email, phone, role, whatsapp, password_hash 
-       FROM users WHERE email = ?`,
+      `SELECT user_id, name, email, phone, role, whatsapp, password_hash
+       FROM users_kp_db WHERE email = ?`,
       [email]
     );
 
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
 
     const user = rows[0];
 
-    // Password check (using password_hash column)
+    // Password check
     const isValidPassword = await bcrypt.compare(password, user.password_hash);
     if (!isValidPassword) {
       return NextResponse.json(
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
 
     // JWT payload
     const payload = {
-      id: user.id,
+      user_id: user.id,
       name: user.name,
       email: user.email,
       role: user.role,
@@ -49,14 +49,24 @@ export async function POST(request: Request) {
       { expiresIn: '1d' }
     );
 
-    // Return token in JSON for localStorage only
-    return NextResponse.json({
+    // Create NextResponse with cookie
+    const res = NextResponse.json({
       success: true,
-      message: "Login successful",
-      token,
+      message: 'Login successful',
       user: payload
     });
-    
+
+    // Set HttpOnly secure cookie
+    res.cookies.set('token', token, {
+      httpOnly: true,
+      secure: true,        // set true in production
+      sameSite: 'strict',
+      path: '/',
+      maxAge: 60 * 60 * 24, // 1 day
+    });
+
+    return res;
+
   } catch (error) {
     console.error('Login error:', error);
     return NextResponse.json(

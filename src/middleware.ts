@@ -1,61 +1,81 @@
+import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
-import jwt from "jsonwebtoken";
 
-export async function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl;
+export default withAuth(
+  function middleware(req) {
+    const path = req.nextUrl.pathname;
+    const token = req.nextauth.token;
 
-  // List of paths that don't require authentication
-  const publicPaths = [
-    "/api/auth/login",
-    "/api/users/login",
-    "/api/users/signup",
-    "/api/users/logout",
-    "/",
-    "/client_login",
-    "/referuser/login",
-    "/signup",
-    "/favicon.ico",
-    "/_next", // Next.js internals
-    "/public",
-  ];
+    // For API routes, return 401 instead of redirect
+    if (path.startsWith("/api/")) {
+      if (!token) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      return NextResponse.next();
+    }
 
-  if (publicPaths.some(path => pathname.startsWith(path))) {
+    if (!token) {
+      return NextResponse.redirect(new URL("/login", req.url));
+    }
+
+    const role = token.role as string;
+
+    // ROLE PROTECTION RULES
+    if (path.startsWith("/admin") && !["superadmin"].includes(role)) {
+      return NextResponse.redirect(new URL("/login", req.url));
+    }
+
+    if (path.startsWith("/sales-admin") && !["sales_admin"].includes(role)) {
+      return NextResponse.redirect(new URL("/login", req.url));
+    }
+
+    if (path.startsWith("/referuser") && !["referuser"].includes(role)) {
+      return NextResponse.redirect(new URL("/login", req.url));
+    }
+
+    if (path.startsWith("/superadmin") && !["superadmin"].includes(role)) {
+      return NextResponse.redirect(new URL("/login", req.url));
+    }
+
+    if (path.startsWith("/client") && !["client"].includes(role)) {
+      return NextResponse.redirect(new URL("/", req.url));
+    }
+
+    if (path.startsWith("/designer") && !["designer"].includes(role)) {
+      return NextResponse.redirect(new URL("/", req.url));
+    }
+    
+    if (path.startsWith("/supervisor") && !["supervisor"].includes(role)) {
+      return NextResponse.redirect(new URL("/", req.url));
+    }
+
+    if (path.startsWith("/businessBrand") && !["businessBrand"].includes(role)) {
+      return NextResponse.redirect(new URL("/", req.url));
+    }
     return NextResponse.next();
+  },
+  {
+    callbacks: {
+      authorized: ({ token }) => {
+        return !!token;
+      }
+
+    },
   }
-
-  // Get token from Authorization header
-  const authHeader = req.headers.get("authorization");
-  const token = authHeader?.startsWith("Bearer ") ? authHeader.substring(7) : null;
-
-  if (!token) {
-    if (pathname.startsWith("/api")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    // Redirect to login page
-    return NextResponse.redirect(new URL("/referuser/login", req.url));
-  }
-
-  // Verify JWT token
-  try {
-    jwt.verify(token, process.env.JWT_SECRET!);
-  } catch (err) {
-    if (pathname.startsWith("/api")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    return NextResponse.redirect(new URL("/referuser/login", req.url));
-  }
-
-  return NextResponse.next();
-}
+);
 
 export const config = {
   matcher: [
-    /*
-      Apply middleware to all API routes and protected pages except public paths
-    */
-    "/api/:path*",
+    "/profile",
+    "/simple",
+    "/dashboard/:path*",
+    "/client/:path*",
+    "/designer/:path*",
+    "/superadmin/:path*",
+    "/sales-admin/:path*",
     "/referuser/:path*",
-    // add more protected routes as needed
+    "/supervisor/:path*",
+    "/businessBrand/:path*",
+    "/admin/:path*",
   ],
 };

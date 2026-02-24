@@ -68,7 +68,7 @@ const Footer = () => {
         <div className="text-left">
           <h2 className="text-xl  font-[var(--lancelot-sans)]">Contact Us</h2>
           <div className="mt-2 space-y-2">
-            <p className="flex items-center gap-2"><MapPin /> <a href="https://www.google.com/maps/place/Kayapalat/@22.4935035,88.3891571,17z/data=!3m1!4b1!4m6!3m5!1s0x3a0271868dc12e59:0x509108582c6ccb4!8m2!3d22.4935035!4d88.391732!16s%2Fg%2F11vqzp8xlf?entry=ttu&g_ep=EgoyMDI1MDMxMi4wIKXMDSoASAFQAw%3D%3D" target="_blank" className="text-gray-300 hover:text-white ">179-A, Survey Park Rd, Purba Diganta, Santoshpur, Kolkata - 70075, WB, India</a></p>
+            <p className="flex items-center gap-2"><MapPin /> <a href="https://www.google.com/maps/place/Kayapalat/@22.4935035,88.3891571,17z/data=!3m1!4b1!4m6!3m5!1s0x3a0271868dc12e59:0x509108582c6ccb4!8m2!3d22.4935035!4d88.391732!16s%2Fg%2F11vqzp8xlf?entry=ttu&g_ep=EgoyMDI1MDMxMi4wIKXMDSoASAFQAw%3D%3D" target="_blank" className="text-gray-300 hover:text-white ">179-A, Survey Park Rd, Purba Diganta, Santoshpur, Kolkata - 700075, WB, India</a></p>
             <p className="flex items-center gap-2"><Phone /> <a href="tel:6026026026" className="text-gray-300 hover:text-white">602-602-602-6</a></p>
             <p className="flex items-center gap-2"><Mail /> <a href="mailto:info@kayapalat.co" className="text-gray-300 hover:text-white">info@kayapalat.co</a></p>
           </div>
