@@ -1,0 +1,29 @@
+"use client";
+
+import { usePathname } from "next/navigation";
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
+
+export default function ClientLayoutWrapper({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const pathname = usePathname();
+  const isAdminRoute = pathname.startsWith("/admin") || pathname.startsWith("/sales-admin") || pathname.startsWith("/superadmin");
+  const isReferUserRoute = pathname.startsWith("/referuser");
+  const isClientRoute = pathname.startsWith("/client");
+  const isYourDesignsRoute = pathname === "/client/your-designs";
+  const isbusinessBrandRoute = pathname.startsWith("/businessBrand");
+  const isDesignerRoute = pathname.startsWith("/designer");
+  
+
+
+  return (
+    <>
+      {!isAdminRoute && !isReferUserRoute && (!isClientRoute || isYourDesignsRoute) && !isbusinessBrandRoute && !isDesignerRoute && <Navbar />}
+      <main className="flex flex-col min-h-screen">{children}</main>
+      {!isAdminRoute && !isReferUserRoute && !isYourDesignsRoute && !isbusinessBrandRoute && !isDesignerRoute && <Footer />}
+    </>
+  );
+}
