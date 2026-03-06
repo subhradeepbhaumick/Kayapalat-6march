@@ -8,6 +8,8 @@ export async function GET() {
         ps.id,
         ps.appointment_id,
         ps.supervisor_id,
+        ps.start_date,
+        ps.end_date,
         u.name as supervisor_name,
         u.profile_pic
       FROM project_supervisor ps
@@ -23,7 +25,9 @@ export async function GET() {
         id: row.id,
         supervisor_id: row.supervisor_id,
         supervisor_name: row.supervisor_name,
-        profile_pic: row.profile_pic || '/placeholder_person.jpg'
+        profile_pic: row.profile_pic || '/placeholder_person.jpg',
+        start_date: row.start_date,
+        end_date: row.end_date
       });
     });
 
@@ -65,6 +69,31 @@ export async function POST(request: Request) {
 
   } catch (error) {
     console.error("ASSIGN SUPERVISOR ERROR:", error);
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
+  }
+}
+
+export async function PUT(request: Request) {
+  try {
+    const body = await request.json();
+    const { appointment_id, start_date, end_date } = body;
+
+    if (!appointment_id) {
+      return NextResponse.json({ error: "Missing appointment_id" }, { status: 400 });
+    }
+
+    // Format dates to MySQL DATETIME format (YYYY-MM-DD HH:MM:SS)
+    const formattedStartDate = start_date ? new Date(start_date).toISOString().slice(0, 19).replace('T', ' ') : null;
+    const formattedEndDate = end_date ? new Date(end_date).toISOString().slice(0, 19).replace('T', ' ') : null;
+
+    await executeQuery(
+      "UPDATE project_supervisor SET start_date = ?, end_date = ? WHERE appointment_id = ?",
+      [formattedStartDate, formattedEndDate, appointment_id]
+    );
+
+    return NextResponse.json({ message: "Dates updated successfully" }, { status: 200 });
+  } catch (error) {
+    console.error("UPDATE DATES ERROR:", error);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
