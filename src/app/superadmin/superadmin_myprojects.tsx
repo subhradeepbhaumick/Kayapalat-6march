@@ -39,6 +39,7 @@ interface Project {
   progress: number;
   team_size: number;
   remaining_days: string;
+  supervisor_id: string;
 }
 
 const MyProjectsPage = () => {
@@ -56,7 +57,7 @@ const MyProjectsPage = () => {
     newStatus: "Active" | "Completed" | "Pending"
   ) => {
     try {
-      const response = await fetch("/api/supervisor/myprojects", {
+      const response = await fetch("/api/superadmin/myprojects", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -85,7 +86,7 @@ const MyProjectsPage = () => {
     newTeamSize: number
   ) => {
     try {
-      const response = await fetch("/api/supervisor/myprojects", {
+      const response = await fetch("/api/superadmin/myprojects", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -117,7 +118,7 @@ const MyProjectsPage = () => {
     newProgress: number
   ) => {
     try {
-      const response = await fetch("/api/supervisor/myprojects", {
+      const response = await fetch("/api/superadmin/myprojects", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -174,7 +175,7 @@ const MyProjectsPage = () => {
   useEffect(() => {
     const fetchProjects = async () => {
       try {
-        const response = await fetch("/api/supervisor/myprojects");
+        const response = await fetch("/api/superadmin/myprojects");
         if (response.ok) {
           const data = await response.json();
           const mappedProjects: Project[] = data.map((item: any) => {
@@ -200,6 +201,7 @@ const MyProjectsPage = () => {
               progress: parseInt(item.progress) || 0,
               team_size: item.today_labour || 0,
               remaining_days: calculateRemainingDays(endDate),
+              supervisor_id: item.supervisor_id || "N/A",
             };
           });
           setProjects(mappedProjects);
@@ -452,6 +454,15 @@ const MyProjectsPage = () => {
                     className="w-full font-semibold text-gray-800 text-sm bg-transparent outline-none"
                   />
                 </div>
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <div className="flex items-center gap-2 text-gray-500 text-xs mb-1">
+                    <Users size={14} />
+                    Supervisor
+                  </div>
+                  <div className="font-semibold text-gray-800 text-sm">
+                    {project.supervisor_id}
+                  </div>
+                </div>
                 <p className="text-xs text-red-600 font-semibold mt-1">
                   {project.remaining_days}
                 </p>
@@ -524,7 +535,7 @@ const ProjectModal = ({
 
     try {
       const res = await fetch(
-        `/api/supervisor/myprojects?type=order_details&o_id=${orderId}`
+        `/api/superadmin/myprojects?type=order_details&o_id=${orderId}`
       );
 
       const data = await res.json();
@@ -552,7 +563,7 @@ const ProjectModal = ({
 
     try {
       const res = await fetch(
-        `/api/supervisor/myprojects?type=labour_summary&appointment_id=${project.project_id}`
+        `/api/superadmin/myprojects?type=labour_summary&appointment_id=${project.project_id}`
       );
       if (res.ok) {
         const data = await res.json();
@@ -587,7 +598,7 @@ const ProjectModal = ({
   const fetchTasks = async () => {
     try {
       const res = await fetch(
-        `/api/supervisor/myprojects?type=tasks&appointment_id=${project.project_id}`
+        `/api/superadmin/myprojects?type=tasks&appointment_id=${project.project_id}`
       );
 
       if (res.ok) {
@@ -601,7 +612,7 @@ const ProjectModal = ({
   const fetchActivities = async () => {
     try {
       const res = await fetch(
-        `/api/supervisor/myprojects?type=activities&appointment_id=${project.project_id}`
+        `/api/superadmin/myprojects?type=activities&appointment_id=${project.project_id}`
       );
 
       if (res.ok) {
@@ -621,7 +632,7 @@ const ProjectModal = ({
 
     try {
       const res = await fetch(
-        `/api/supervisor/myprojects?type=chat&appointment_id=${project.project_id}`
+        `/api/superadmin/myprojects?type=chat&appointment_id=${project.project_id}`
       );
       if (res.ok) {
         const data = await res.json();
@@ -661,7 +672,7 @@ const ProjectModal = ({
     }
 
     try {
-      await fetch("/api/supervisor/myprojects", {
+      await fetch("/api/superadmin/myprojects", {
         method: "POST",
         body: formData,
       });
@@ -705,7 +716,7 @@ const ProjectModal = ({
       const fetchWorkers = async () => {
         try {
           const res = await fetch(
-            `/api/supervisor/myprojects?type=labour&appointment_id=${project.project_id}`
+            `/api/superadmin/myprojects?type=labour&appointment_id=${project.project_id}`
           );
           if (res.ok) {
             const data = await res.json();
@@ -722,7 +733,7 @@ const ProjectModal = ({
   const fetchExpenses = async () => {
     try {
       const res = await fetch(
-        `/api/supervisor/myprojects?type=expenses&appointment_id=${project.project_id}`
+        `/api/superadmin/myprojects?type=expenses&appointment_id=${project.project_id}`
       );
 
       if (res.ok) {
@@ -757,7 +768,7 @@ const ProjectModal = ({
     if (!name || !role || !session?.user?.id) return;
 
     try {
-      const res = await fetch("/api/supervisor/myprojects", {
+      const res = await fetch("/api/superadmin/myprojects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -811,7 +822,7 @@ const ProjectModal = ({
     }
 
     try {
-      const res = await fetch("/api/supervisor/myprojects", {
+      const res = await fetch("/api/superadmin/myprojects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -852,7 +863,7 @@ const ProjectModal = ({
       .replace("T", " ");
 
     try {
-      const res = await fetch("/api/supervisor/myprojects", {
+      const res = await fetch("/api/superadmin/myprojects", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -887,7 +898,7 @@ const ProjectModal = ({
     if (newTaskText.trim() === "") return;
 
     try {
-      const res = await fetch("/api/supervisor/myprojects", {
+      const res = await fetch("/api/superadmin/myprojects", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -913,7 +924,7 @@ const ProjectModal = ({
     if (newActivityText.trim() === "") return;
 
     try {
-      const res = await fetch("/api/supervisor/myprojects", {
+      const res = await fetch("/api/superadmin/myprojects", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -939,7 +950,7 @@ const ProjectModal = ({
 
   const handleCompleteTask = async (taskId: number) => {
     try {
-      const res = await fetch("/api/supervisor/myprojects", {
+      const res = await fetch("/api/superadmin/myprojects", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

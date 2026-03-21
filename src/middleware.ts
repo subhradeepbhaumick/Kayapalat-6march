@@ -156,6 +156,10 @@ export default withAuth(
     if (path.startsWith("/businessBrand") && !["businessBrand"].includes(role)) {
       return NextResponse.redirect(new URL("/", req.url));
     }
+
+    if (path.startsWith("/supervisor") && !["supervisor"].includes(role)) {
+      return NextResponse.redirect(new URL("/", req.url));
+    }
     return NextResponse.next();
   },
   {
@@ -177,6 +181,8 @@ export const config = {
     "/referuser/:path*",
     "/admin/:path*",
     "/businessBrand/:path*",
+    "/supervisor/:path*",
+
     
 
   ],

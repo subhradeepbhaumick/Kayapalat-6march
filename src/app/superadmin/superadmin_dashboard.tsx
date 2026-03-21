@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Menu, LayoutDashboard, Users, UserPlus, BarChart3, ClipboardList, User, Settings, X, Store, CreditCard, Plus, MessageSquare, FileText, Link2, Pencil } from 'lucide-react';
+import { Menu, LayoutDashboard, Users, UserPlus, BarChart3, ClipboardList, User, Settings, X, Store, CreditCard, Plus, MessageSquare, FileText, Link2, Pencil, Briefcase, UserCog, UserCheck, CalendarCheck, Building2, BadgeIndianRupee, Receipt, Wallet, ArrowRightLeft, Package, ShoppingCart, Wrench, Shield } from 'lucide-react';
 import ClientComplaintsTab from '@/components/ClientComplaintsTab';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -20,6 +20,8 @@ import ProductsTab from './superadmin_products';
 import OrdersTab from './superadmin_showorder';
 import QuotationPdfsTab from './superadmin_quotation_pdfs';
 import SuperAdminDesignerAssignments from './superadmin_designer_assignments';
+import SupervisorAttendance from './superadmin_supervisor_attendance';
+import SuperAdminMyProjects from './superadmin_myprojects';
 interface Client {
   user_id: string;
   name: string;
@@ -570,25 +572,27 @@ const SuperAdmin = () => {
 
   const sidebarItems = [
     { icon: LayoutDashboard, label: 'Dashboard', key: 'Dashboard' },
-    { icon: Users, label: 'Admin', key: 'Admin' },
-    { icon: Users, label: 'Supervisor', key: 'Supervisor' },
+    { icon: UserCog, label: 'Admin', key: 'Admin' },
+    { icon: UserCheck, label: 'Supervisor', key: 'Supervisor' },
+    { icon: CalendarCheck, label: 'Supervisor Attendance', key: 'SupervisorAttendance' },
+    { icon: Building2, label: 'All Projects', key: 'AllProjects' },
     { icon: Users, label: 'Agent', key: 'Agent' },
-    { icon: Users, label: 'Lead', key: 'Lead' },
-    { icon: UserPlus, label: 'Payments', key: 'Payments' },
-    { icon: UserPlus, label: 'Invoices', key: 'Invoices' },
-    { icon: CreditCard, label: 'Interior Payments', key: 'InteriorPayments' },
-    { icon: CreditCard, label: 'Client Design Transactions', key: 'ClientDesignTransactions' },
+    { icon: UserPlus, label: 'Lead', key: 'Lead' },
+    { icon: BadgeIndianRupee, label: 'Payments', key: 'Payments' },
+    { icon: Receipt, label: 'Invoices', key: 'Invoices' },
+    { icon: Wallet, label: 'Interior Payments', key: 'InteriorPayments' },
+    { icon: ArrowRightLeft, label: 'Client Design Transactions', key: 'ClientDesignTransactions' },
     { icon: MessageSquare, label: 'Client Complaints', key: 'ClientComplaints' },
     { icon: FileText, label: 'PDF Quotations', key: 'PDFQuotations' },
     { icon: Link2, label: 'Designer Assignments', key: 'DesignerAssignments' },
     { icon: Store, label: 'Showroom', key: 'Showroom' },
-    { icon: Store, label: 'Products', key: 'Products' },
-    { icon: Store, label: 'Orders', key: 'Orders' },
+    { icon: Package, label: 'Products', key: 'Products' },
+    { icon: ShoppingCart, label: 'Orders', key: 'Orders' },
 
     // { icon: BarChart3, label: 'Business Insights', key: 'Business Insights' },
     // { icon: Bell, label: 'Notifications', key: 'Notifications' },
-    { icon: Settings, label: 'Maintenance', key: 'Maintenance' },
-    { icon: ClipboardList, label: 'Admin Panel', key: 'Admin Panel' },
+    { icon: Wrench, label: 'Maintenance', key: 'Maintenance' },
+    { icon: Shield, label: 'Admin Panel', key: 'Admin Panel' },
     // { icon: Settings, label: 'Settings', key: 'Settings' },
   ];
 
@@ -838,6 +842,12 @@ const SuperAdmin = () => {
               )}
               {activeTab === 'Supervisor' && (
                 <SuperAdmin_Supervisor />
+              )}
+              {activeTab === 'SupervisorAttendance' && (
+                <SupervisorAttendance />
+              )}
+              {activeTab === 'AllProjects' && (
+                <SuperAdminMyProjects />
               )}
               {activeTab === 'Agent' && (
                 <AgentTab />

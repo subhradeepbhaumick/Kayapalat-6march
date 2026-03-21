@@ -9,19 +9,12 @@ import MyProjectsPage from './supervisor_myprojects';
 import SiteVisitPage from './supervisor_sitevisit';
 import ChatPage from './supervisor_issue';
 import ExpensesPage from './supervisor_projectexpense';
+import ProductsTab from './supervisor_products';
+import OrdersTab from './supervisor_showorder';
 
 const SupervisorDashboard = () => {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [activeTab, setActiveTab] = useState('Dashboard');
-  const [stats] = useState({
-    totalAgents: 0,
-    activeAgents: 0,
-    totalLeads: 0,
-    pendingApprovals: 0,
-    monthlyRevenue: 0
-  });
-  const [loadingStats] = useState(false);
-
   const { data: session, status } = useSession();
   const user = session?.user;
   const router = useRouter();
@@ -36,6 +29,16 @@ const SupervisorDashboard = () => {
       toast.error('Logout failed');
     }
   };
+
+  React.useEffect(() => {
+    const handleResize = () => {
+      setSidebarCollapsed(window.innerWidth < 1024);
+    };
+
+    window.addEventListener('resize', handleResize);
+    handleResize(); // Set initial state
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   React.useEffect(() => {
     const handleFullscreenChange = () => {
@@ -64,13 +67,17 @@ const SupervisorDashboard = () => {
     { icon: BarChart3, label: 'Site Visit', key: 'Site Visit' },
     { icon: ClipboardList, label: 'Issue', key: 'Issue' },
     { icon: UserPlus, label: 'Expense', key: 'Expense' },
-    { icon: Settings, label: 'Settings', key: 'Settings' },
+    { icon: Search, label: 'Products', key: 'Products' },
+    { icon: CheckCircle, label: 'Orders', key: 'Orders' },
+    // { icon: Settings, label: 'Settings', key: 'Settings' },
   ];
 
   return (
     <div className="min-h-screen bg-[#D2EBD0] flex">
       {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 ${sidebarCollapsed ? 'w-16' : 'w-64'} bg-white shadow-lg transition-all duration-300 ease-in-out`}>
+      <div className={`fixed inset-y-0 left-0 z-50 bg-white shadow-lg transition-transform duration-300 ease-in-out w-64
+        ${sidebarCollapsed ? '-translate-x-full' : 'translate-x-0'} 
+        lg:translate-x-0 ${sidebarCollapsed ? 'lg:w-16' : 'lg:w-64'}`}>
         {/* Header Section */}
         <div className="p-4 border-b bg-[#D7E7D0]">
           <div className="flex items-center justify-between">
@@ -99,7 +106,7 @@ const SupervisorDashboard = () => {
               </div>
             )}
             <button
-              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              onClick={() => setSidebarCollapsed(p => !p)}
               className="text-[#295A47] hover:text-[#1e3d32] transition-colors"
             >
               <Menu size={20} />
@@ -125,11 +132,14 @@ const SupervisorDashboard = () => {
       </div>
 
       {/* Main Content */}
-      <div className={`flex-1 overflow-y-auto pt-20 ${sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'}`}>
+      <div className={`flex-1 overflow-y-auto pt-20 transition-all duration-300 ease-in-out ${sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'}`}>
         {/* Navbar */}
-        <div className={`bg-white shadow-md p-4 flex justify-between items-center fixed top-0 z-40 ${sidebarCollapsed ? 'lg:left-16 left-0' : 'lg:left-64 left-0'} right-0`}>
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-3 pr-80 pl-2">
+        <div className={`bg-white shadow-md p-4 flex justify-between items-center fixed top-0 z-40 right-0 transition-all duration-300 ease-in-out ${sidebarCollapsed ? 'left-0 lg:left-16' : 'left-0 lg:left-64'}`}>
+          <div className="flex items-center">
+            <button onClick={() => setSidebarCollapsed(p => !p)} className="p-2 text-[#295A47] lg:hidden">
+              <Menu size={24} />
+            </button>
+            <div className="flex items-center space-x-3 pl-2">
               <img
                 src="/kayapalat-logo.png"
                 alt="Kayapalat Logo"
@@ -144,7 +154,6 @@ const SupervisorDashboard = () => {
               />
               <h1 className="text-xl font-bold text-[#295A47] hidden">KAYAPALAT</h1>
             </div>
-            
           </div>
           <button
             onClick={handleLogout}
@@ -229,9 +238,9 @@ const SupervisorDashboard = () => {
         </div>
 
         {/* Hero Section */}
-        <div className={`p-8 ${sidebarCollapsed ? 'lg:p-4' : ''}`}>
-          <div className="max-w-8xl pt-4 mx-auto">
-            <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
+        <div className="p-4 md:p-8">
+          <div className="max-w-8xl mx-auto">
+            <div className="bg-white rounded-lg shadow-lg p-4 md:p-8 mb-8">
               {activeTab === 'Dashboard' && (
                 <>
                   <div className="text-center mb-8">
@@ -239,69 +248,8 @@ const SupervisorDashboard = () => {
                       Supervisor Dashboard
                     </h1>
                     <p className="text-gray-600 text-lg">
-                      Oversee team performance, manage approvals, and monitor business operations.
+                      Oversee team performance, manage labours, and monitor business operations.
                     </p>
-                  </div>
-
-                  {/* Stats Cards */}
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                    <div className="bg-[#D7E7D0] rounded-lg p-6 text-center">
-                      <Users className="w-12 h-12 text-[#295A47] mx-auto mb-4" />
-                      <h3 className="text-2xl font-bold text-[#295A47]">{loadingStats ? '...' : stats.totalAgents}</h3>
-                      <p className="text-gray-700">Total Agents</p>
-                    </div>
-                    <div className="bg-[#D7E7D0] rounded-lg p-6 text-center">
-                      <CheckCircle className="w-12 h-12 text-[#295A47] mx-auto mb-4" />
-                      <h3 className="text-2xl font-bold text-[#295A47]">{loadingStats ? '...' : stats.activeAgents}</h3>
-                      <p className="text-gray-700">Active Agents</p>
-                    </div>
-                    <div className="bg-[#D7E7D0] rounded-lg p-6 text-center">
-                      <UserPlus className="w-12 h-12 text-[#295A47] mx-auto mb-4" />
-                      <h3 className="text-2xl font-bold text-[#295A47]">{loadingStats ? '...' : stats.totalLeads}</h3>
-                      <p className="text-gray-700">Total Leads</p>
-                    </div>
-                    <div className="bg-[#D7E7D0] rounded-lg p-6 text-center">
-                      <AlertTriangle className="w-12 h-12 text-[#295A47] mx-auto mb-4" />
-                      <h3 className="text-2xl font-bold text-[#295A47]">{loadingStats ? '...' : stats.pendingApprovals}</h3>
-                      <p className="text-gray-700">Pending Approvals</p>
-                    </div>
-                  </div>
-
-                  {/* Recent Activity */}
-                  <div className="bg-gray-50 rounded-lg p-6">
-                    <h2 className="text-2xl font-bold text-[#295A47] mb-6">Recent Activity</h2>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between p-4 bg-white rounded-lg shadow-sm">
-                        <div className="flex items-center space-x-3">
-                          <CheckCircle className="w-8 h-8 text-green-500" />
-                          <div>
-                            <p className="font-medium text-gray-800">Lead Approved</p>
-                            <p className="text-sm text-gray-600">Agent John approved lead #1234</p>
-                          </div>
-                        </div>
-                        <span className="text-sm text-gray-500">2 hours ago</span>
-                      </div>
-                      <div className="flex items-center justify-between p-4 bg-white rounded-lg shadow-sm">
-                        <div className="flex items-center space-x-3">
-                          <XCircle className="w-8 h-8 text-red-500" />
-                          <div>
-                            <p className="font-medium text-gray-800">Lead Rejected</p>
-                            <p className="text-sm text-gray-600">Agent Sarah rejected lead #1235</p>
-                          </div>
-                        </div>
-                        <span className="text-sm text-gray-500">4 hours ago</span>
-                      </div>
-                      <div className="flex items-center justify-between p-4 bg-white rounded-lg shadow-sm">
-                        <div className="flex items-center space-x-3">
-                          <Eye className="w-8 h-8 text-blue-500" />
-                          <div>
-                            <p className="font-medium text-gray-800">Performance Review</p>
-                            <p className="text-sm text-gray-600">Monthly performance report generated</p>
-                          </div>
-                        </div>
-                        <span className="text-sm text-gray-500">1 day ago</span>
-                      </div>
-                    </div>
                   </div>
                 </>
               )}
@@ -314,7 +262,10 @@ const SupervisorDashboard = () => {
 
               {activeTab === 'Expense' && <ExpensesPage />}
 
-              
+              {activeTab === 'Products' && <ProductsTab />}
+
+              {activeTab === 'Orders' && <OrdersTab />}
+
             </div>
           </div>
         </div>
@@ -322,7 +273,7 @@ const SupervisorDashboard = () => {
 
       {/* Overlay for mobile sidebar */}
       {!sidebarCollapsed && (
-        <div
+        <div // This overlay will only show on mobile when the sidebar is open
           className="fixed inset-0 bg-black/70 bg-opacity-50 z-40 lg:hidden"
           onClick={() => setSidebarCollapsed(true)}
         />

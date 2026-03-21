@@ -1,8 +1,16 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import { Camera, LogIn, LogOut } from "lucide-react";
+import { Camera, LogIn, LogOut, X } from "lucide-react";
+
+interface Attendance {
+  id: number;
+  checkin: string;
+  checkout: string | null;
+  text: string | null;
+  picture: string | null;
+}
 
 const SiteVisitPage = () => {
   const params = useParams();
@@ -12,115 +20,281 @@ const SiteVisitPage = () => {
   const [checkOutTime, setCheckOutTime] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [image, setImage] = useState<File | null>(null);
+  const [attendance, setAttendance] = useState<Attendance[]>([]);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
-  // Check In
+  const formatDateTime = (dateString: string) => {
+    return new Date(dateString).toLocaleString("en-GB", {
+      timeZone: "Asia/Kolkata",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+  };
+
+  const getKolkataTime = () => {
+    return new Date().toISOString();
+  };
+
+  const fetchAttendance = async () => {
+    const res = await fetch("/api/supervisor/sitevisit?type=history");
+    const data = await res.json();
+    setAttendance(data);
+  };
+
+  useEffect(() => {
+    fetchAttendance();
+  }, []);
+
   const handleCheckIn = () => {
-    const time = new Date().toLocaleTimeString();
-
+    const time = getKolkataTime();
     setCheckInTime(time);
   };
+  const handleSubmit = async () => {
+    if (!checkInTime) {
+      alert("Please check in first");
+      return;
+    }
+    if (!image) {
+      alert("Please upload a site image");
+      return;
+    }
 
-  // Check Out
-  const handleCheckOut = () => {
-    const time = new Date().toLocaleTimeString();
+    if (!note.trim()) {
+      alert("Please write a site visit note");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("checkin", checkInTime);
+    formData.append("text", note);
+
+    if (image) {
+      formData.append("image", image);
+    }
+
+    await fetch("/api/supervisor/sitevisit", {
+      method: "POST",
+      body: formData,
+    });
+    setCheckInTime(null);
+    setNote("");
+    setImage(null);
+    fetchAttendance();
+  };
+  const handleCheckOut = async (id: number) => {
+    const time = getKolkataTime();
+
+    await fetch("/api/supervisor/sitevisit", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        id: id,
+        checkout: time,
+      }),
+    });
 
     setCheckOutTime(time);
+    fetchAttendance();
   };
 
-  // Upload Image
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       setImage(e.target.files[0]);
     }
   };
 
-  // Submit Report
-  const handleSubmit = () => {
-    alert("Site Visit Data Submitted (Frontend)");
-  };
-
   return (
-    <div className="p-8">
-      {/* Title */}
+    <div className="min-h-screen bg-gray-50 p-4 md:p-8">
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-2xl md:text-3xl font-bold text-[#295A47]">
+          Site Visit
+        </h1>
+      </div>
 
-      <h1 className="text-3xl font-bold text-[#295A47] mb-6">
-        Site Visit — {projectId}
-      </h1>
+      {/* Checkin Card */}
 
-      <div className="bg-white shadow-lg rounded-lg p-6 max-w-2xl">
-        {/* Check In */}
+      <div className="bg-white rounded-2xl shadow-md p-6 mb-10 max-w-3xl border border-gray-100">
+        <h2 className="text-lg font-semibold text-gray-700 mb-4">
+          Site Visit Check-In
+        </h2>
 
-        <div className="mb-4">
-          <button
-            onClick={handleCheckIn}
-            disabled={checkInTime !== null}
-            className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:bg-gray-400"
-          >
-            <LogIn size={18} />
-            Check In
-          </button>
+        {/* Checkin Button */}
 
-          {checkInTime && (
-            <p className="mt-2 text-green-700">Checked In at: {checkInTime}</p>
-          )}
-        </div>
+        <button
+          onClick={handleCheckIn}
+          disabled={checkInTime !== null}
+          className="flex items-center gap-2 bg-[#295A47] text-white px-5 py-2.5 rounded-lg hover:bg-[#1f4537] transition disabled:bg-gray-400"
+        >
+          <LogIn size={18} />
+          Check In
+        </button>
 
-        {/* Check Out */}
+        {checkInTime && (
+          <p className="mt-3 text-green-600 font-medium text-sm">
+            Checked In at: {formatDateTime(checkInTime)}
+          </p>
+        )}
 
-        <div className="mb-4">
-          <button
-            onClick={handleCheckOut}
-            disabled={!checkInTime || checkOutTime !== null}
-            className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 disabled:bg-gray-400"
-          >
-            <LogOut size={18} />
-            Check Out
-          </button>
+        {/* Upload */}
 
-          {checkOutTime && (
-            <p className="mt-2 text-red-700">Checked Out at: {checkOutTime}</p>
-          )}
-        </div>
-
-        {/* Upload Image */}
-
-        <div className="mb-4">
-          <label className="flex items-center gap-2 font-medium mb-2">
+        <div className="mt-6">
+          <label className="flex items-center gap-2 text-gray-700 font-medium mb-2">
             <Camera size={18} />
             Upload Site Image
           </label>
 
-          <input
-            type="file"
-            onChange={handleImageChange}
-            className="border p-2 w-full rounded"
-          />
+          <div className="mt-6">
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Site Image
+            </label>
 
-          {image && <p className="text-sm text-gray-600 mt-1">{image.name}</p>}
+            <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-[#295A47] transition bg-gray-50">
+              {image ? (
+                <div className="flex flex-col items-center gap-2 p-3">
+                  <img
+                    src={URL.createObjectURL(image)}
+                    className="w-24 h-24 object-cover rounded-lg shadow"
+                  />
+
+                  <p className="text-xs text-gray-600 text-center break-all">
+                    {image.name}
+                  </p>
+
+                  <span className="text-xs text-[#295A47] font-medium">
+                    Click to change image
+                  </span>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center text-gray-500">
+                  <Camera size={28} className="mb-2" />
+
+                  <p className="text-sm font-medium">Upload Site Image</p>
+
+                  <p className="text-xs text-gray-400">Click to browse</p>
+                </div>
+              )}
+
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="hidden"
+              />
+            </label>
+          </div>
         </div>
 
         {/* Note */}
 
-        <div className="mb-4">
-          <label className="font-medium">Add Note</label>
+        <div className="mt-6">
+          <label className="font-medium text-gray-700">Site Detail</label>
 
           <textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            className="w-full border rounded p-2 mt-1"
+            placeholder="Write site visit notes..."
+            className="w-full border border-gray-200 rounded-lg p-3 mt-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#295A47]"
             rows={4}
           />
         </div>
-
-        {/* Submit */}
-
         <button
           onClick={handleSubmit}
-          className="bg-[#295A47] text-white px-6 py-2 rounded hover:bg-[#1f4637]"
+          disabled={!checkInTime}
+          className="mt-4 flex items-center gap-2 bg-[#295A47] text-white px-6 py-2.5 rounded-lg hover:bg-[#1f4537] transition disabled:bg-gray-400"
         >
           Submit
         </button>
       </div>
+
+      {/* Attendance History */}
+
+      <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-4 md:p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg md:text-xl font-semibold text-gray-700">
+            Attendance History
+          </h2>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead className="bg-gray-100 text-gray-600">
+              <tr>
+                <th className="p-3 text-left">Check In</th>
+                <th className="p-3 text-left">Check Out</th>
+                <th className="p-3 text-left">Note</th>
+                <th className="p-3 text-center">Image</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {attendance.map((att) => (
+                <tr
+                  key={att.id}
+                  className="border-b hover:bg-gray-50 transition"
+                >
+                  <td className="p-3">{formatDateTime(att.checkin)}</td>
+
+                  <td className="p-3">
+                    {att.checkout ? (
+                      <span className="text-gray-700">
+                        {formatDateTime(att.checkout)}
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => handleCheckOut(att.id)}
+                        className="flex items-center gap-1 bg-red-500 text-white px-3 py-1.5 rounded-md hover:bg-red-600 text-xs"
+                      >
+                        <LogOut size={14} />
+                        Check Out
+                      </button>
+                    )}
+                  </td>
+
+                  <td className="p-3 text-gray-600 max-w-xs">
+                    {att.text || "-"}
+                  </td>
+
+                  <td className="p-3 text-center">
+                    {att.picture ? (
+                      <img
+                        src={att.picture}
+                        onClick={() => setSelectedImage(att.picture!)}
+                        className="w-14 h-14 object-cover rounded-lg mx-auto border cursor-pointer hover:scale-110 transition"
+                      />
+                    ) : (
+                      "-"
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {selectedImage && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          {/* Close Button */}
+          <button
+            onClick={() => setSelectedImage(null)}
+            className="absolute top-6 right-6 bg-white/90 hover:bg-white text-black rounded-full p-2 shadow-lg"
+          >
+            <X size={22} />
+          </button>
+
+          {/* Image */}
+          <img
+            src={selectedImage}
+            className="max-h-[90vh] max-w-[90vw] rounded-lg shadow-2xl"
+          />
+        </div>
+      )}
     </div>
   );
 };

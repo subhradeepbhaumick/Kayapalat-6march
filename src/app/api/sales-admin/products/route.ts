@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
     const decoded = token;
     console.log('Products API: Decoded token:', decoded);
 
-    if (!decoded || !decoded.user_id || (decoded.role !== 'sales_admin' && decoded.role !== 'superadmin')) {
+    if (!decoded || !decoded.user_id || (decoded.role !== 'sales_admin' && decoded.role !== 'superadmin' && token.role !== 'supervisor')) {
       console.log('Products API: Role validation failed - invalid role or missing user_id');
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -133,7 +133,7 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (token.role !== 'sales_admin' && token.role !== 'superadmin') {
+    if (token.role !== 'sales_admin' && token.role !== 'superadmin' && token.role !== 'supervisor') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

@@ -1,17 +1,18 @@
-# Supervisor Dashboard Navigation Updates
+# Labour Dropdown Implementation TODO
 
-## Tasks:
-- [ ] Create route page for My Projects (/supervisor/my-projects)
-- [ ] Create route page for Labour (/supervisor/labour)
-- [ ] Create route page for Expenses (/supervisor/expenses)
-- [ ] Create route page for Site Visit (/supervisor/site-visit)
-- [ ] Create route page for Issues (/supervisor/issue)
-- [ ] Update supervisor_dashboard.tsx sidebar to use router.push() for navigation
+## Plan Progress
+- [x] Analyzed files and confirmed API endpoint
+- [x] Got user approval for plan
 
-## Routes Mapping:
-- Dashboard → /supervisor (existing)
-- My Projects → /supervisor/my-projects → supervisor_myprojects.tsx
-- Labour → /supervisor/labour → supervisor_labour.tsx
-- Expenses → /supervisor/expenses → supervisor_projectexpense.tsx
-- Site Visit → /supervisor/site-visit → supervisor_sitevisit.tsx
-- Issues → /supervisor/issue → supervisor_issue.tsx
+## Implementation Steps
+- [ ] 1. Update src/app/supervisor/supervisor_myprojects.tsx
+  - Add labourOptions state
+  - Add fetchLabourOptions function  
+  - Add selectedLabourId state
+  - Pass new props to ExpenseModal
+- [ ] 2. Update src/components/supervisor-modal/ExpenseModal.tsx
+  - Add new interface props
+  - Replace name input with dropdown for labour
+  - Add fetch logic and auto-set title
+- [ ] 3. Test dropdown loads data
+- [ ] 4. Test expense save with selected labour

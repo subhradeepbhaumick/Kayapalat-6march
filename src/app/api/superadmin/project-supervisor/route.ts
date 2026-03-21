@@ -8,8 +8,12 @@ export async function GET() {
         ps.id,
         ps.appointment_id,
         ps.supervisor_id,
+        ps.total_budget,
         ps.start_date,
         ps.end_date,
+          ps.cash_in_hand,
+  ps.paid,
+  ps.due,
         u.name as supervisor_name,
         u.profile_pic
       FROM project_supervisor ps
@@ -27,7 +31,11 @@ export async function GET() {
         supervisor_name: row.supervisor_name,
         profile_pic: row.profile_pic || '/placeholder_person.jpg',
         start_date: row.start_date,
-        end_date: row.end_date
+        end_date: row.end_date,
+        total_budget: row.total_budget,
+         cash_in_hand: row.cash_in_hand || "0",
+  paid: row.paid || "0",
+  due: row.due || "0",
       });
     });
 
@@ -76,28 +84,64 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    const { appointment_id, start_date, end_date } = body;
+    const { appointment_id, start_date, end_date, total_budget, cash_in_hand } = body;
 
     if (!appointment_id) {
       return NextResponse.json({ error: "Missing appointment_id" }, { status: 400 });
     }
 
-    // Format dates to MySQL DATETIME format (YYYY-MM-DD HH:MM:SS)
-    const formattedStartDate = start_date ? new Date(start_date).toISOString().slice(0, 19).replace('T', ' ') : null;
-    const formattedEndDate = end_date ? new Date(end_date).toISOString().slice(0, 19).replace('T', ' ') : null;
+    const safeBudget = total_budget ?? 0;
+    const safeCash = cash_in_hand ?? 0;
 
-    await executeQuery(
-      "UPDATE project_supervisor SET start_date = ?, end_date = ? WHERE appointment_id = ?",
-      [formattedStartDate, formattedEndDate, appointment_id]
+    const formattedStartDate = start_date
+      ? new Date(start_date).toISOString().slice(0, 19).replace("T", " ")
+      : null;
+
+    const formattedEndDate = end_date
+      ? new Date(end_date).toISOString().slice(0, 19).replace("T", " ")
+      : null;
+
+    // 🔹 Get current paid from DB
+    const [rows]: any = await executeQuery(
+      "SELECT paid FROM project_supervisor WHERE appointment_id = ? LIMIT 1",
+      [appointment_id]
     );
 
-    return NextResponse.json({ message: "Dates updated successfully" }, { status: 200 });
+    const paid = parseFloat(rows?.[0]?.paid || 0);
+
+    // 🔹 Correct calculation
+    const cash = parseFloat(safeCash);
+    const due = Math.max(cash - paid, 0);
+
+    await executeQuery(
+      `UPDATE project_supervisor 
+       SET start_date = ?, 
+           end_date = ?, 
+           total_budget = ?, 
+           cash_in_hand = ?, 
+           due = ?, 
+           updated_at = NOW()
+       WHERE appointment_id = ?`,
+      [
+        formattedStartDate,
+        formattedEndDate,
+        safeBudget,
+        safeCash,
+        due,
+        appointment_id,
+      ]
+    );
+
+    return NextResponse.json(
+      { message: "Project updated successfully" },
+      { status: 200 }
+    );
+
   } catch (error) {
-    console.error("UPDATE DATES ERROR:", error);
+    console.error("UPDATE PROJECT ERROR:", error);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
-
 export async function DELETE(request: Request) {
   try {
     const { searchParams } = new URL(request.url);

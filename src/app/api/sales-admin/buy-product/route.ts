@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!token || !token.user_id || (token.role !== 'sales_admin' && token.role !== 'superadmin')) {
+    if (!token || !token.user_id || (token.role !== 'sales_admin' && token.role !== 'superadmin' && token.role !== 'supervisor')) {
       console.log('Buy Product GET API: Unauthorized - invalid role');
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -130,7 +130,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!token || !token.user_id || (token.role !== 'sales_admin' && token.role !== 'superadmin')) {
+    if (!token || !token.user_id || (token.role !== 'sales_admin' && token.role !== 'superadmin' && token.role !== 'supervisor')) {
       console.log('Buy Product API: Unauthorized - invalid role');
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -266,7 +266,7 @@ export async function PUT(req: NextRequest) {
 
     // Auth Check
     const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-    if (!token || !token.user_id || (token.role !== 'sales_admin' && token.role !== 'superadmin')) {
+    if (!token || !token.user_id || (token.role !== 'sales_admin' && token.role !== 'superadmin' && token.role !== 'supervisor')) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -320,7 +320,7 @@ export async function DELETE(req: NextRequest) {
 
     // Auth Check
     const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-    if (!token || !token.user_id || (token.role !== 'sales_admin' && token.role !== 'superadmin')) {
+    if (!token || !token.user_id || (token.role !== 'sales_admin' && token.role !== 'superadmin' && token.role !== 'supervisor')) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

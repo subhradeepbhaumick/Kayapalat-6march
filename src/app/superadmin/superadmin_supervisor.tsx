@@ -45,6 +45,10 @@ const SuperAdmin_Supervisor = () => {
     useState<ProjectAllotment | null>(null);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [totalBudget, setTotalBudget] = useState("");
+  const [cashInHand, setCashInHand] = useState("");
+const [paid, setPaid] = useState("");
+const [due, setDue] = useState("");
 
   // Fetch dates when date modal opens
   useEffect(() => {
@@ -61,9 +65,25 @@ const SuperAdmin_Supervisor = () => {
               data.assignments[selectedProjectForDates.appointment_id];
             if (assignments.length > 0) {
               const firstAssignment = assignments[0];
-              setStartDate(firstAssignment.start_date || "");
-              setEndDate(firstAssignment.end_date || "");
-            }
+              setStartDate(
+                firstAssignment.start_date
+                  ? new Date(firstAssignment.start_date).toLocaleDateString(
+                      "en-CA"
+                    )
+                  : ""
+              );
+
+              setEndDate(
+                firstAssignment.end_date
+                  ? new Date(firstAssignment.end_date).toLocaleDateString(
+                      "en-CA"
+                    )
+                  : ""
+              );
+setTotalBudget(firstAssignment.total_budget || "");
+setCashInHand(firstAssignment.cash_in_hand || "");
+setPaid(firstAssignment.paid || "");
+setDue(firstAssignment.due || "");            }
           }
         } catch (err) {
           console.error("Failed to fetch dates:", err);
@@ -519,18 +539,25 @@ const SuperAdmin_Supervisor = () => {
             </thead>
             <tbody>
               {projectAllotments.map((project) => (
-                <tr
-                  key={project.id}
-                  className="hover:bg-green-50 transition cursor-pointer"
-                  onClick={() => {
-                    setSelectedProjectForDates(project);
-                    setShowDateModal(true);
-                  }}
-                >
-                  <td className="px-4 py-2 border text-center">
+                <tr key={project.id} className="hover:bg-green-50 transition">
+                  <td
+                    className="px-4 py-2 border text-center cursor-pointer hover:text-green-700"
+                    onClick={() => {
+                      setSelectedProjectForDates(project);
+                      setShowDateModal(true);
+                    }}
+                  >
                     {project.appointment_id}
                   </td>
-                  <td className="px-4 py-2 border">{project.project_name}</td>
+                  <td
+                    className="px-4 py-2 border cursor-pointer hover:text-green-700"
+                    onClick={() => {
+                      setSelectedProjectForDates(project);
+                      setShowDateModal(true);
+                    }}
+                  >
+                    {project.project_name}
+                  </td>
                   <td className="px-4 py-2 border">
                     {activeAllotmentId === project.id ? (
                       <div className="flex flex-col gap-2">
@@ -740,10 +767,10 @@ const SuperAdmin_Supervisor = () => {
               <X size={22} />
             </button>
             <h2 className="text-xl font-semibold mb-4 text-center">
-              Set Project Dates
+              Project Details
             </h2>
             <p className="mb-4">
-              Project: {selectedProjectForDates?.project_name}
+              Project Name: {selectedProjectForDates?.project_name}
             </p>
             <div className="space-y-3">
               <div>
@@ -768,6 +795,54 @@ const SuperAdmin_Supervisor = () => {
                   className="w-full border p-2 rounded"
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Total Budget
+                </label>
+                <input
+                  type="number"
+                  value={totalBudget}
+                  onChange={(e) => setTotalBudget(e.target.value)}
+                  className="w-full border p-2 rounded"
+                  placeholder="Enter total budget"
+                />
+              </div>
+              <div>
+  <label className="block text-sm font-medium text-gray-700">
+    Cash In Hand (Supervisor)
+  </label>
+  <input
+    type="number"
+    value={cashInHand}
+    onChange={(e) => setCashInHand(e.target.value)}
+    className="w-full border p-2 rounded"
+    placeholder="Enter cash in hand"
+  />
+</div>
+
+<div>
+  <label className="block text-sm font-medium text-gray-700">
+    Paid
+  </label>
+  <input
+    type="number"
+    value={paid}
+    readOnly
+    className="w-full border p-2 rounded bg-gray-100 cursor-not-allowed"
+  />
+</div>
+
+<div>
+  <label className="block text-sm font-medium text-gray-700">
+    Due
+  </label>
+  <input
+    type="number"
+    value={due}
+    readOnly
+    className="w-full border p-2 rounded bg-gray-100 cursor-not-allowed"
+  />
+</div>
             </div>
             <div className="flex gap-3 mt-4">
               <button
@@ -776,6 +851,7 @@ const SuperAdmin_Supervisor = () => {
                   setShowDateModal(false);
                   setStartDate("");
                   setEndDate("");
+                  setTotalBudget("");
                 }}
               >
                 Cancel
@@ -796,6 +872,8 @@ const SuperAdmin_Supervisor = () => {
                             selectedProjectForDates.appointment_id,
                           start_date: startDate,
                           end_date: endDate,
+                          total_budget: totalBudget,
+                          cash_in_hand: cashInHand,
                         }),
                       }
                     );
@@ -817,7 +895,7 @@ const SuperAdmin_Supervisor = () => {
                         );
                       }
 
-                      alert("Dates saved successfully!");
+                      alert("Data saved successfully!");
                       setShowDateModal(false);
                     } else {
                       const data = await res.json();
