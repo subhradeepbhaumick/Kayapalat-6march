@@ -36,7 +36,8 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
     const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '-');
-    const newFileName = `${sanitizedFileName}`;
+    // const newFileName = `${sanitizedFileName}`;
+     const newFileName = `${Date.now()}-${sanitizedFileName}`;
     const path = join(uploadDir, newFileName);
 
     // --- Write file to the server ---

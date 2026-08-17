@@ -1,81 +1,68 @@
 // src/app/api/supervisor/myprojects/route.ts
-
 import { NextResponse } from "next/server";
 import { executeQuery } from "@/lib/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import path from "path";
 import fs from "fs";
-
 export async function GET(req: Request) {
   try {
     const session = await getServerSession(authOptions);
-
     if (!session || !session.user) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
-
     const supervisorId = (session.user as any).id;
     const { searchParams } = new URL(req.url);
     const type = searchParams.get("type");
     /* ===========================
    🔹 LABOUR EXPENSES GET
-=========================== */
+ ========================== */
     if (type === "labour_expenses") {
       const appointment_id = searchParams.get("appointment_id");
-
       if (!appointment_id) {
         return NextResponse.json(
           { message: "Appointment ID is required" },
           { status: 400 }
         );
       }
-
       const [expenses] = await executeQuery(
         `SELECT * FROM project_labour_expenses
      WHERE appointment_id = ?
      ORDER BY created_at DESC`,
         [appointment_id]
       );
-
       return NextResponse.json({ expenses });
     }
-
     /* ===========================
        🔹 NEW CHAT GET FUNCTION
     ============================ */
     if (type === "chat") {
       const appointment_id = searchParams.get("appointment_id");
-
       if (!appointment_id) {
         return NextResponse.json(
           { message: "Appointment ID is required" },
           { status: 400 }
         );
       }
-
       const [messages] = await executeQuery(
         `SELECT * FROM site_issues_chat
          WHERE appointment_id = ?
          ORDER BY created_at ASC`,
         [appointment_id]
       );
-
       return NextResponse.json(messages);
     }
     /* ===========================
    🔹 TASKS / ACTIVITIES GET
-=========================== */
+ ========================== */
     if (type === "tasks") {
       const appointment_id = searchParams.get("appointment_id");
-
       if (!appointment_id) {
         return NextResponse.json(
           { message: "Appointment ID is required" },
           { status: 400 }
         );
       }
-
       const [tasks] = await executeQuery(
         `SELECT * FROM project_supervisor_tasks
      WHERE appointment_id = ?
@@ -84,20 +71,16 @@ export async function GET(req: Request) {
      ORDER BY created_at DESC`,
         [appointment_id]
       );
-
       return NextResponse.json({ tasks });
     }
-
     if (type === "activities") {
       const appointment_id = searchParams.get("appointment_id");
-
       if (!appointment_id) {
         return NextResponse.json(
           { message: "Appointment ID is required" },
           { status: 400 }
         );
       }
-
       const [activities] = await executeQuery(
         `SELECT * FROM project_supervisor_tasks
      WHERE appointment_id = ?
@@ -105,7 +88,6 @@ export async function GET(req: Request) {
      ORDER BY created_at DESC`,
         [appointment_id]
       );
-
       return NextResponse.json({ activities });
     }
     /* ===========================
@@ -113,11 +95,9 @@ export async function GET(req: Request) {
 =========================== */
     if (type === 'order_details') {
       const o_id = searchParams.get('o_id');
-
       if (!o_id) {
         return NextResponse.json({ error: 'Order ID is required' }, { status: 400 });
       }
-
       // 🔹 Existing product cost query (UNCHANGED)
       const [rows] = await executeQuery(
         `SELECT
@@ -134,15 +114,12 @@ export async function GET(req: Request) {
         bp.o_id = ?`,
         [o_id]
       );
-
       const materials = rows as any[];
-
       // 🔹 Calculate material total
       let total_amount = materials.reduce(
         (sum, item) => sum + (Number(item.cost) || 0),
         0
       );
-
       // 🔹 Fetch extra transport cost
       const [transportRow] = await executeQuery(
         `SELECT extra_trsnsport_cost 
@@ -151,13 +128,10 @@ export async function GET(req: Request) {
      LIMIT 1`,
         [o_id]
       );
-
       const extraTransport =
         (transportRow as any[])[0]?.extra_trsnsport_cost || 0;
-
       // 🔹 Add extra transport cost
       total_amount = total_amount + Number(extraTransport);
-
       return NextResponse.json({
         materials: materials,
         extra_transport_cost: Number(extraTransport),
@@ -169,14 +143,12 @@ export async function GET(req: Request) {
 =========================== */
     if (type === "expenses") {
       const appointment_id = searchParams.get("appointment_id");
-
       if (!appointment_id) {
         return NextResponse.json(
           { message: "Appointment ID is required" },
           { status: 400 }
         );
       }
-
       // 🔹 Get material expenses
       const [expenses] = await executeQuery(
         `SELECT * FROM project_material_expenses_supervisor
@@ -184,7 +156,6 @@ export async function GET(req: Request) {
      ORDER BY created_at DESC`,
         [appointment_id]
       );
-
       // 🔹 Get financial data from project_supervisor
       const [budgetRow] = await executeQuery(
         `SELECT 
@@ -197,14 +168,11 @@ export async function GET(req: Request) {
      LIMIT 1`,
         [appointment_id]
       );
-
       const row = (budgetRow as any[])[0] || {};
-
       const budget = Number(row.total_budget || 0);
       const cash_in_hand = Number(row.cash_in_hand || 0);
       const paid = Number(row.paid || 0);
       const due = Number(row.due || 0);
-
       return NextResponse.json({
         expenses,
         budget,
@@ -225,11 +193,9 @@ export async function GET(req: Request) {
         "SELECT * FROM labour_attendence WHERE appointment_id = ? ORDER BY created_at DESC",
         [appointment_id]
       );
-
       const now = new Date();
       const todayKolkata = now.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
       const idsToReset: number[] = [];
-
       const updatedLabourers = (labourers as any[]).map((labour) => {
         const labourDate = new Date(labour.updated_at).toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
         if (labourDate !== todayKolkata && labour.present_tinytint === 1) {
@@ -238,7 +204,6 @@ export async function GET(req: Request) {
         }
         return labour;
       });
-
       if (idsToReset.length > 0) {
         const placeholders = idsToReset.map(() => '?').join(',');
         await executeQuery(
@@ -253,14 +218,12 @@ export async function GET(req: Request) {
     =========================== */
     if (type === "labour_summary") {
       const appointment_id = searchParams.get("appointment_id");
-
       if (!appointment_id) {
         return NextResponse.json(
           { message: "Appointment ID is required" },
           { status: 400 }
         );
       }
-
       const [labours] = await executeQuery(
         `SELECT t1.labour_id, t1.labour_name, t1.amount, t3.total_paid, t1.due_amount
      FROM project_labour_expenses1 t1
@@ -279,7 +242,6 @@ export async function GET(req: Request) {
      ORDER BY t1.updated_at DESC`,
         [appointment_id, appointment_id]
       );
-
       return NextResponse.json({ labours });
     }
     /* ===========================
@@ -302,7 +264,6 @@ export async function GET(req: Request) {
       `,
       [supervisorId]
     );
-
     return NextResponse.json(projects);
   } catch (error) {
     console.error("Error fetching projects:", error);
@@ -312,40 +273,84 @@ export async function GET(req: Request) {
     );
   }
 }
-
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session || !session.user) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
-
     const contentType = req.headers.get("content-type");
-
-
     /* ===========================
        🔹 NEW CHAT POST FUNCTION
     ============================ */
     if (contentType?.includes("multipart/form-data")) {
       const formData = await req.formData();
-
       const type = formData.get("type");
-
+      if (type === "labour") {
+        const supervisor_id = (session.user as any).id;
+        const appointment_id = formData.get("appointment_id") as string;
+        const role = formData.get("role") as string;
+        const labour_name = formData.get("labour_name") as string;
+        const phone = formData.get("phone") as string;
+        const image = formData.get("identity_image") as File | null;
+        if (!appointment_id || !role || !labour_name) {
+          return NextResponse.json(
+            { message: "Missing required fields" },
+            { status: 400 }
+          );
+        }
+        let identity_image_url: string | null = null;
+        // ✅ IMAGE UPLOAD
+        if (image && image.size > 0) {
+          if (!image.type.startsWith("image/")) {
+            return NextResponse.json(
+              { message: "Only image files allowed" },
+              { status: 400 }
+            );
+          }
+          const bytes = await image.arrayBuffer();
+          const buffer = Buffer.from(bytes);
+          const uploadDir = path.join(process.cwd(), "public/labour_identity");
+          if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+          }
+          const ext = image.name.split(".").pop();
+          const fileName = `${Date.now()}-${Math.random()
+            .toString(36)
+            .substring(2)}.${ext}`;
+          const filePath = path.join(uploadDir, fileName);
+          fs.writeFileSync(filePath, buffer);
+          identity_image_url = `/labour_identity/${fileName}`;
+        }
+        // ✅ INSERT
+        await executeQuery(
+          `INSERT INTO labour_attendence 
+          (supervisor_id, appointment_id, role, labour_name, phone, identity_image, present_tinytint, total_present, created_at, updated_at) 
+          VALUES (?, ?, ?, ?, ?, ?, ?, 1, NOW(), NOW())`,
+          [
+            supervisor_id,
+            appointment_id,
+            role,
+            labour_name,
+            phone || null,
+            identity_image_url,
+            1,
+          ]
+        );
+        return NextResponse.json({ message: "Labour added successfully" });
+      }
       if (type === "chat") {
         const appointment_id = formData.get("appointment_id") as string;
         const sender_id = (session.user as any).id;
         const message = formData.get("message") as string;
         const image = formData.get("image") as File | null;
-
         if (!appointment_id) {
           return NextResponse.json(
             { message: "Appointment ID is required" },
             { status: 400 }
           );
         }
-
         let image_url: string | null = null;
-
         if (image && image.size > 0) {
           // 🔹 Allow only images
           if (!image.type.startsWith("image/")) {
@@ -354,7 +359,6 @@ export async function POST(req: Request) {
               { status: 400 }
             );
           }
-
           // 🔹 Limit file size (5MB)
           if (image.size > 5 * 1024 * 1024) {
             return NextResponse.json(
@@ -362,26 +366,19 @@ export async function POST(req: Request) {
               { status: 400 }
             );
           }
-
           const bytes = await image.arrayBuffer();
           const buffer = Buffer.from(bytes);
-
           const uploadDir = path.join(process.cwd(), "public/site_issues_chat");
-
           if (!fs.existsSync(uploadDir)) {
             fs.mkdirSync(uploadDir, { recursive: true });
           }
-
           // 🔹 Clean filename
           const ext = image.name.split(".").pop();
           const safeFileName = `${Date.now()}-${Math.random()
             .toString(36)
             .substring(2)}.${ext}`;
-
           const filePath = path.join(uploadDir, safeFileName);
-
           fs.writeFileSync(filePath, buffer);
-
           image_url = `/site_issues_chat/${safeFileName}`;
         }
         // 🔹 Generate Asia/Kolkata time
@@ -390,8 +387,8 @@ export async function POST(req: Request) {
         );
         await executeQuery(
           `INSERT INTO site_issues_chat 
-   (appointment_id, sender_id, message, image_url, created_at)
-   VALUES (?, ?, ?, ?, ?)`,
+          (appointment_id, sender_id, message, image_url, created_at)
+          VALUES (?, ?, ?, ?, ?)`,
           [
             appointment_id,
             sender_id,
@@ -400,43 +397,35 @@ export async function POST(req: Request) {
             kolkataNow,
           ]
         );
-
         return NextResponse.json({ message: "Message sent successfully" });
       }
     }
-
     /* ===========================
        🔹 EXISTING JSON POST
     ============================ */
     const body = await req.json();
-
     /* ===========================
    🔹 ADD TASK / ACTIVITY
 =========================== */
     if (body.type === "task" || body.type === "activity") {
       const { appointment_id, text, details } = body;
       const supervisor_id = (session.user as any).id;
-
       if (!appointment_id || !text) {
         return NextResponse.json(
           { message: "Missing required fields" },
           { status: 400 }
         );
       }
-
       const kolkataNow = new Date(
         new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
       );
-
       const status = body.type === "task" ? "pending" : "done";
-
       await executeQuery(
         `INSERT INTO project_supervisor_tasks
     (appointment_id, supervisor_id, type, text, details, status, created_at)
     VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [appointment_id, supervisor_id, body.type, text, details || null, status, kolkataNow]
       );
-
       return NextResponse.json({ message: "Added successfully" });
     }
     /* ===========================
@@ -444,14 +433,12 @@ export async function POST(req: Request) {
     =========================== */
     if (body.type === "pay_labour_expense") {
       const { appointment_id, labour_id, paid_amount, labour_name, paid_by } = body;
-
       if (!appointment_id || !labour_id || !paid_amount || !labour_name) {
         return NextResponse.json(
           { message: "Missing required fields" },
           { status: 400 }
         );
       }
-
       const paymentAmount = Number(paid_amount);
       if (isNaN(paymentAmount) || paymentAmount <= 0) {
         return NextResponse.json(
@@ -459,9 +446,7 @@ export async function POST(req: Request) {
           { status: 400 }
         );
       }
-
       const kolkataNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
-
       // Get current total amount owed from work log
       const [sumRows] = await executeQuery(
         `SELECT SUM(amount) as total_amount
@@ -470,7 +455,6 @@ export async function POST(req: Request) {
         [labour_id, appointment_id]
       );
       const totalAmount = Number((sumRows as any[])[0]?.total_amount || 0);
-
       // Get total paid so far from payment log
       const [paidRows] = await executeQuery(
         `SELECT SUM(paid_amount) as total_paid
@@ -479,10 +463,8 @@ export async function POST(req: Request) {
         [labour_id, appointment_id]
       );
       const totalPreviouslyPaid = Number((paidRows as any[])[0]?.total_paid || 0);
-
       // Calculate the new due amount
       const newDueAmount = totalAmount - (totalPreviouslyPaid + paymentAmount);
-
       // INSERT a new record for the payment
       await executeQuery(
         `INSERT INTO project_labour_expenses1
@@ -499,22 +481,18 @@ export async function POST(req: Request) {
           kolkataNow,
         ]
       );
-
       if (paid_by === "myself") {
         // Get current supervisor financials
         const [supervisorData] = await executeQuery(
           `SELECT cash_in_hand, paid FROM project_supervisor WHERE appointment_id = ?`,
           [appointment_id]
         );
-
         if ((supervisorData as any[]).length > 0) {
           const current_cash_in_hand = Number((supervisorData as any[])[0].cash_in_hand || 0);
           const current_paid = Number((supervisorData as any[])[0].paid || 0);
-
           // Calculate new values
           const new_paid = current_paid + paymentAmount;
           const new_due = current_cash_in_hand - new_paid;
-
           // Update project_supervisor
           await executeQuery(
             `UPDATE project_supervisor SET paid = ?, due = ? WHERE appointment_id = ?`,
@@ -522,47 +500,41 @@ export async function POST(req: Request) {
           );
         }
       }
-
       return NextResponse.json({ message: "Labour payment recorded successfully" });
     }
-
     /* ===========================
        🔹 NEW MATERIAL EXPENSE POST
     =========================== */
     if (body.type === "add_expense") {
       const { appointment_id, title, quantity, per_amount, paid_by } = body;
       const added_by = (session.user as any).id;
-
       if (!appointment_id || !title || !quantity || !per_amount) {
         return NextResponse.json(
           { message: "Missing required fields" },
           { status: 400 }
         );
       }
-
       let labour_id = null;
-
       // Fetch labour_id if the title matches a labour_name for the same appointment
       const [labourRow] = await executeQuery(
         `SELECT labour_id FROM project_labour_expenses WHERE labour_name = ? AND appointment_id = ? ORDER BY created_at DESC LIMIT 1`,
         [title, appointment_id]
       );
-
       if ((labourRow as any[]).length > 0) {
         labour_id = (labourRow as any[])[0].labour_id;
       }
-
       const total_amount = Number(quantity) * Number(per_amount);
-
       // Asia/Kolkata time
       const kolkataNow = new Date(
         new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
       );
-
+      const paid_from_cashInHand = paid_by === "myself" ? 1 : 0;
+      console.log("paid_by =", paid_by);
+      console.log("paid_from_cashInHand =", paid_from_cashInHand);
       await executeQuery(
         `INSERT INTO project_material_expenses_supervisor
-     (appointment_id, added_by, labour_id, title, quantity, per_amount, total_amount, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+     (appointment_id, added_by, labour_id, title, quantity, per_amount, total_amount,paid_from_cashInHand, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?,?)`,
         [
           appointment_id,
           added_by,
@@ -571,25 +543,22 @@ export async function POST(req: Request) {
           quantity,
           per_amount,
           total_amount,
+          paid_from_cashInHand,
           kolkataNow,
         ]
       );
-
       if (paid_by === "myself") {
         // Get current supervisor financials
         const [supervisorData] = await executeQuery(
           `SELECT cash_in_hand, paid FROM project_supervisor WHERE appointment_id = ?`,
           [appointment_id]
         );
-
         if ((supervisorData as any[]).length > 0) {
           const current_cash_in_hand = Number((supervisorData as any[])[0].cash_in_hand || 0);
           const current_paid = Number((supervisorData as any[])[0].paid || 0);
-
           // Calculate new values
           const new_paid = current_paid + total_amount;
           const new_due = current_cash_in_hand - new_paid;
-
           // Update project_supervisor
           await executeQuery(
             `UPDATE project_supervisor SET paid = ?, due = ? WHERE appointment_id = ?`,
@@ -597,7 +566,6 @@ export async function POST(req: Request) {
           );
         }
       }
-
       if (labour_id) {
         // Get current total amount owed from work log
         const [sumRows] = await executeQuery(
@@ -607,7 +575,6 @@ export async function POST(req: Request) {
           [labour_id, appointment_id]
         );
         const totalAmount = Number((sumRows as any[])[0]?.total_amount || 0);
-
         // Get total paid so far from payment log
         const [paidRows] = await executeQuery(
           `SELECT SUM(paid_amount) as total_paid
@@ -616,10 +583,8 @@ export async function POST(req: Request) {
           [labour_id, appointment_id]
         );
         const totalPreviouslyPaid = Number((paidRows as any[])[0]?.total_paid || 0);
-
         // Calculate the new due amount
         const newDueAmount = totalAmount - (totalPreviouslyPaid + total_amount);
-
         // INSERT a new record for the payment/material expense in project_labour_expenses1
         await executeQuery(
           `INSERT INTO project_labour_expenses1
@@ -637,7 +602,6 @@ export async function POST(req: Request) {
           ]
         );
       }
-
       return NextResponse.json({
         message: "Material expense added successfully",
       });
@@ -655,9 +619,7 @@ export async function POST(req: Request) {
         rate_unit,
         size
       } = body;
-
       const supervisor_id = (session.user as any).id;
-
       if (
         !appointment_id ||
         !work_type ||
@@ -671,15 +633,11 @@ export async function POST(req: Request) {
           { status: 400 }
         );
       }
-
       const amount = Number(rate) * Number(size);
-
       /* ===========================
          🔹 NEW LOGIC: FIND labour_id
       ============================ */
-
       let labour_id;
-
       const [existingLabour] = await executeQuery(
         `SELECT labour_id 
      FROM project_labour_expenses 
@@ -687,7 +645,6 @@ export async function POST(req: Request) {
      LIMIT 1`,
         [labour_name, work_type]
       );
-
       if ((existingLabour as any[]).length > 0) {
         // Same labour + work_type → use same labour_id
         labour_id = (existingLabour as any[])[0].labour_id;
@@ -699,11 +656,9 @@ export async function POST(req: Request) {
         const maxId = (maxRow as any[])[0]?.max_id || 0;
         labour_id = Number(maxId) + 1;
       }
-
       const kolkataNow = new Date(
         new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
       );
-
       await executeQuery(
         `INSERT INTO project_labour_expenses
      (appointment_id, supervisor_id, work_type,labour_id, labour_name, article, rate, rate_unit, size, amount, created_at, updated_at)
@@ -726,7 +681,6 @@ export async function POST(req: Request) {
       /* ===========================
          🔹 UPDATE project_labour_expenses1
       =========================== */
-
       // Get total labour amount for this labour_id and appointment_id
       const [sumRows] = await executeQuery(
         `SELECT SUM(amount) as total_amount
@@ -735,7 +689,6 @@ export async function POST(req: Request) {
         [labour_id, appointment_id]
       );
       const newTotalAmount = Number((sumRows as any[])[0]?.total_amount || 0);
-
       // Get total paid so far for this labour_id and appointment_id
       const [paidRows] = await executeQuery(
         `SELECT SUM(paid_amount) as total_paid
@@ -744,11 +697,9 @@ export async function POST(req: Request) {
         [labour_id, appointment_id]
       );
       const totalPaid = Number((paidRows as any[])[0]?.total_paid || 0);
-
       // This transaction is for adding work, so the "payment" for this transaction is 0.
       // The new due amount is the new total work value minus what has been paid so far.
       const newDueAmount = newTotalAmount - totalPaid;
-
       // Always INSERT a new record to log the state change
       await executeQuery(
         `INSERT INTO project_labour_expenses1
@@ -769,43 +720,6 @@ export async function POST(req: Request) {
         message: "Labour expense added successfully",
       });
     }
-    if (body.type === "labour") {
-      const {
-        supervisor_id,
-        appointment_id,
-        role,
-        labour_name,
-        present_tinytint,
-      } = body;
-
-      if (!supervisor_id || !appointment_id || !role || !labour_name) {
-        return NextResponse.json(
-          { message: "Missing required fields" },
-          { status: 400 }
-        );
-      }
-
-      const [result] = await executeQuery(
-        `INSERT INTO labour_attendence 
-        (supervisor_id, appointment_id, role, labour_name, present_tinytint, total_present, created_at, updated_at) 
-        VALUES (?, ?, ?, ?, ?, 1, NOW(), NOW())`,
-        [
-          supervisor_id,
-          appointment_id,
-          role,
-          labour_name,
-          present_tinytint || 1,
-        ]
-      );
-
-      const insertId = (result as any).insertId;
-      const [newWorker] = await executeQuery(
-        "SELECT * FROM labour_attendence WHERE id = ?",
-        [insertId]
-      );
-      return NextResponse.json(newWorker[0]);
-    }
-
     return NextResponse.json({ message: "Project created successfully" });
   } catch (error) {
     return NextResponse.json(
@@ -814,7 +728,6 @@ export async function POST(req: Request) {
     );
   }
 }
-
 /* ===========================
    🔹 YOUR PUT FUNCTION UNCHANGED
 =========================== */
@@ -824,24 +737,19 @@ export async function PUT(req: Request) {
     if (!session || !session.user) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
-
     const body = await req.json();
-
     /* ===========================
        🔹 LABOUR STATUS UPDATE
     ============================ */
     if (body.type === "labour_status") {
       const { id, present_tinytint, updated_at } = body;
-
       if (!id) {
         return NextResponse.json(
           { message: "Worker ID is required" },
           { status: 400 }
         );
       }
-
       let query;
-
       if (present_tinytint === 1) {
         query =
           "UPDATE labour_attendence SET present_tinytint = 1, total_present = total_present + 1, updated_at = ? WHERE id = ? AND present_tinytint = 0";
@@ -849,45 +757,37 @@ export async function PUT(req: Request) {
         query =
           "UPDATE labour_attendence SET present_tinytint = 0, total_present = GREATEST(0, total_present - 1), updated_at = ? WHERE id = ? AND present_tinytint = 1";
       }
-
       await executeQuery(query, [updated_at, id]);
-
       const [updatedWorker] = await executeQuery(
         "SELECT * FROM labour_attendence WHERE id = ?",
         [id]
       );
-
       return NextResponse.json({
         message: "Status updated successfully",
         worker: updatedWorker[0],
       });
     }
-
     /* ===========================
        🔹 COMPLETE TASK
     ============================ */
     if (body.type === "complete_task") {
       const { id } = body;
-
       if (!id) {
         return NextResponse.json(
           { message: "Task ID required" },
           { status: 400 }
         );
       }
-
       // 1️⃣ Mark task as done
       const kolkataNow = new Date(
         new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
       );
-
       await executeQuery(
         `UPDATE project_supervisor_tasks
         SET status = 'done', updated_at = ?
         WHERE id = ?`,
         [kolkataNow, id]
       );
-
       // 2️⃣ Get task details
       const [task]: any = await executeQuery(
         `SELECT appointment_id, supervisor_id, text
@@ -895,10 +795,8 @@ export async function PUT(req: Request) {
          WHERE id = ?`,
         [id]
       );
-
       if (task && task.length > 0) {
         const t = task[0];
-
         // 3️⃣ Insert activity log
         await executeQuery(
           `INSERT INTO project_supervisor_tasks
@@ -912,7 +810,6 @@ export async function PUT(req: Request) {
           ]
         );
       }
-
       return NextResponse.json({ message: "Task completed" });
     }
     /* ===========================
@@ -928,16 +825,13 @@ export async function PUT(req: Request) {
         rate_unit,
         size
       } = body;
-
       if (!id) {
         return NextResponse.json(
           { message: "Expense ID required" },
           { status: 400 }
         );
       }
-
       const amount = Number(rate) * Number(size);
-
       // 1️⃣ Get labour_id and appointment_id first
       const [row] = await executeQuery(
         `SELECT labour_id, appointment_id
@@ -945,14 +839,12 @@ export async function PUT(req: Request) {
      WHERE id = ?`,
         [id]
       );
-
       if ((row as any[]).length === 0) {
         return NextResponse.json(
           { message: "Expense not found" },
           { status: 404 }
         );
       }
-
       const labour_id = (row as any[])[0].labour_id;
       const appointment_id = (row as any[])[0].appointment_id;
       const kolkataNow = new Date(
@@ -975,7 +867,6 @@ export async function PUT(req: Request) {
           id
         ]
       );
-
       // 3️⃣ Recalculate total amount
       const [sumRows] = await executeQuery(
         `SELECT SUM(amount) as total_amount
@@ -984,9 +875,7 @@ export async function PUT(req: Request) {
      AND appointment_id = ?`,
         [labour_id, appointment_id]
       );
-
       const totalAmount = (sumRows as any[])[0]?.total_amount || 0;
-
       // 4️⃣ Get paid amount
       const [summaryRow] = await executeQuery(
         `SELECT paid_amount
@@ -994,11 +883,8 @@ export async function PUT(req: Request) {
      WHERE labour_id = ? AND appointment_id = ?`,
         [labour_id, appointment_id]
       );
-
       const paidAmount = (summaryRow as any[])[0]?.paid_amount || 0;
-
       const dueAmount = totalAmount - paidAmount;
-
       // 5️⃣ Update summary table
       await executeQuery(
         `UPDATE project_labour_expenses1
@@ -1012,7 +898,6 @@ export async function PUT(req: Request) {
           appointment_id
         ]
       );
-
       return NextResponse.json({
         message: "Labour expense updated successfully",
       });
@@ -1020,55 +905,43 @@ export async function PUT(req: Request) {
     /* ===========================
        🔹 PROJECT UPDATE
     ============================ */
-
     const { appointment_id, status, today_labour, progress } = body;
-
     if (!appointment_id) {
       return NextResponse.json(
         { message: "Missing required field: appointment_id" },
         { status: 400 }
       );
     }
-
     const updates: string[] = [];
     const values: any[] = [];
-
     if (status !== undefined) {
       updates.push("status = ?");
       values.push(status);
     }
-
     if (today_labour !== undefined) {
       updates.push("today_labour = ?");
       values.push(today_labour);
     }
-
     if (progress !== undefined) {
       updates.push("progress = ?");
       values.push(progress);
     }
-
     if (updates.length === 0) {
       return NextResponse.json(
         { message: "No fields to update" },
         { status: 400 }
       );
     }
-
     values.push(appointment_id);
-
     await executeQuery(
       `UPDATE project_supervisor
        SET ${updates.join(", ")}
        WHERE appointment_id = ?`,
       values
     );
-
     return NextResponse.json({ message: "Project updated successfully" });
-
   } catch (error) {
     console.error("Error updating project:", error);
-
     return NextResponse.json(
       { message: "Error updating project", error },
       { status: 500 }
@@ -1078,28 +951,22 @@ export async function PUT(req: Request) {
 export async function DELETE(req: Request) {
   try {
     const session = await getServerSession(authOptions);
-
     if (!session || !session.user) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
-
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
     const type = searchParams.get("type");
-
     if (!id) {
       return NextResponse.json(
         { message: "ID required" },
         { status: 400 }
       );
     }
-
     /* ===========================
        🔹 DELETE LABOUR EXPENSE
     =========================== */
-
     if (type === "labour_expense") {
-
       // 1️⃣ Get labour info first
       const [row] = await executeQuery(
         `SELECT labour_id, appointment_id 
@@ -1107,20 +974,16 @@ export async function DELETE(req: Request) {
      WHERE id = ?`,
         [id]
       );
-
       if ((row as any[]).length === 0) {
         return NextResponse.json({ message: "Expense not found" }, { status: 404 });
       }
-
       const labour_id = (row as any[])[0].labour_id;
       const appointment_id = (row as any[])[0].appointment_id;
-
       // 2️⃣ Delete record
       await executeQuery(
         `DELETE FROM project_labour_expenses WHERE id = ?`,
         [id]
       );
-
       // 3️⃣ Recalculate total
       const [sumRows] = await executeQuery(
         `SELECT SUM(amount) as total_amount
@@ -1128,9 +991,7 @@ export async function DELETE(req: Request) {
      WHERE labour_id = ?`,
         [labour_id]
       );
-
       const totalAmount = (sumRows as any[])[0]?.total_amount || 0;
-
       // 4️⃣ Update summary
       await executeQuery(
         `UPDATE project_labour_expenses1
@@ -1138,26 +999,20 @@ export async function DELETE(req: Request) {
      WHERE labour_id = ? AND appointment_id = ?`,
         [totalAmount, labour_id, appointment_id]
       );
-
       return NextResponse.json({
         message: "Labour article removed successfully",
       });
     }
-
     /* ===========================
        🔹 EXISTING TASK DELETE
     =========================== */
-
     await executeQuery(
       `DELETE FROM project_supervisor_tasks WHERE id = ?`,
       [id]
     );
-
     return NextResponse.json({ message: "Deleted successfully" });
-
   } catch (error) {
     console.error("Error deleting:", error);
-
     return NextResponse.json(
       { message: "Error deleting item", error },
       { status: 500 }

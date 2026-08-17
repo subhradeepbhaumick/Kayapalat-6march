@@ -190,7 +190,16 @@ export async function POST(req: NextRequest) {
     console.log('Buy Product API: Connecting to database');
     const connection = await mysql.createConnection(dbConfig);
     console.log('Buy Product API: Database connection established');
+// 🔹 Get composite GST scheme from manufacturer
+const [dealerResult] = await connection.execute(
+  `SELECT composite_gst_scheme FROM manufacturer WHERE dealer_id = ?`,
+  [dealer_id]
+) as [mysql.RowDataPacket[], any];
 
+const composite_gst_scheme =
+  dealerResult.length > 0 && dealerResult[0].composite_gst_scheme === 1 ? 1 : 0;
+
+console.log('Composite GST Scheme for dealer:', composite_gst_scheme);
     const query = `
       INSERT INTO buy_product (
         order_id,
@@ -205,6 +214,7 @@ export async function POST(req: NextRequest) {
         discount,
         gst,
         gst_amount,
+        composite_gst_scheme,
         quantity,
         discounted_ammount,
         changed_price,
@@ -215,7 +225,7 @@ export async function POST(req: NextRequest) {
         booking_status,
         created_at,
         updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW(), NOW())
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW(), NOW())
     `;
 
     const values = [
@@ -231,6 +241,7 @@ export async function POST(req: NextRequest) {
       discount,
       gst,
       gst_amount,
+      composite_gst_scheme,
       quantity,
       discounted_ammount,
       changed_price,

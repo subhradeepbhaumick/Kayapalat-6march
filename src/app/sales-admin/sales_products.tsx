@@ -56,6 +56,7 @@ const ProductsTab = () => {
   const [extraTransportCost, setExtraTransportCost] = useState(0);
   const [session, setSession] = useState<Session | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
+  const [showroomStockFilter, setShowroomStockFilter] = useState<"all" | "in_showroom">("all");
   const [selectedCompanyFilter, setSelectedCompanyFilter] =
     useState<string>("All");
   const [productNameSearch, setProductNameSearch] = useState<string>("");
@@ -111,7 +112,8 @@ const ProductsTab = () => {
       product.product_name
         .toLowerCase()
         .includes(productNameSearch.toLowerCase());
-    return categoryMatch && companyMatch && nameMatch;
+    const showroomMatch = showroomStockFilter === "all" ||(showroomStockFilter === "in_showroom" && product.showroom_stock === 2);
+    return categoryMatch && companyMatch && nameMatch && showroomMatch;
   });
 
   // Get unique companies from cart
@@ -395,11 +397,10 @@ const ProductsTab = () => {
         selectedProduct.transportation_cost || 0
       );
 
-      const productMrp = finalProductCost * 100 / (100 + gstPercentage);
-      const discountAmount = productMrp * discountPercentage / 100;
-      const gstCalculated = productMrp * gstPercentage / 100;
-      const finalPricePerUnit =
-        productMrp - discountAmount + gstCalculated ;
+      const productMrp = (finalProductCost * 100) / (100 + gstPercentage);
+      const discountAmount = (productMrp * discountPercentage) / 100;
+      const gstCalculated = (productMrp * gstPercentage) / 100;
+      const finalPricePerUnit = productMrp - discountAmount + gstCalculated;
       const totalPrice =
         finalPricePerUnit * quantity +
         (selectedProduct.transport_exclude === 1 ? extraTransportCost : 0);
@@ -529,6 +530,26 @@ const ProductsTab = () => {
       console.log("Purchase completed:", result);
       const orderId = result.o_id || "N/A";
 
+      // Fetch dealer info for invoice customization
+      let dealerCompanyName = "KAYAPALAT";
+      let dealerCompositeGST = false;
+      let dealerAddress: string | null = null;
+      let dealerPhone: string | null = null;
+      try {
+        const dealerRes = await fetch(
+          `/api/sales-admin/check-composite-gst?dealer_id=${selectedCart[0]?.dealer_id}`
+        );
+        const dealerData = await dealerRes.json();
+        dealerCompositeGST = dealerData.composite_gst_scheme === 1;
+        if (dealerData.composite_gst_scheme === 1 && dealerData.company_name) {
+          dealerCompanyName = dealerData.company_name;
+          dealerAddress = dealerData.address ?? null;
+          dealerPhone = dealerData.phone ?? null;
+        }
+      } catch {
+        // fallback to defaults
+      }
+
       const doc = new jsPDF();
 
       // =====================
@@ -553,25 +574,38 @@ const ProductsTab = () => {
       doc.setFontSize(22);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(41, 90, 71); // #295A47
-      doc.text("KAYAPALAT", PAGE_WIDTH / 2, 18, { align: "center" });
-
-      doc.setFontSize(11);
-      doc.setFont("helvetica", "normal");
-      doc.text("Professional Interior Solutions", PAGE_WIDTH / 2, 26, {
+      doc.text(dealerCompanyName.toUpperCase(), PAGE_WIDTH / 2, 18, {
         align: "center",
       });
 
-      doc.setFontSize(9);
-      doc.text(
-        "1160 Chadpur Poleghat, Mouza 80, Sonarpur, Kolkata - 700145, WB, India",
-        PAGE_WIDTH / 2,
-        32,
-        { align: "center" }
-      );
-
-      doc.text("Phone/WhatsApp: 602-602-602-6", PAGE_WIDTH / 2, 38, {
-        align: "center",
-      });
+      if (dealerCompositeGST) {
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "normal");
+        if (dealerAddress) {
+          doc.text(dealerAddress, PAGE_WIDTH / 2, 26, { align: "center" });
+        }
+        if (dealerPhone) {
+          doc.text(`Phone/WhatsApp: ${dealerPhone}`, PAGE_WIDTH / 2, 32, {
+            align: "center",
+          });
+        }
+      } else {
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "normal");
+        doc.text("Professional Interior Solutions", PAGE_WIDTH / 2, 26, {
+          align: "center",
+        });
+        doc.setFontSize(9);
+        doc.text(
+          "1160 Chadpur Poleghat, Mouza 80, Sonarpur, Kolkata - 700145, WB, India",
+          PAGE_WIDTH / 2,
+          32,
+          { align: "center" }
+        );
+        doc.text("Phone/WhatsApp: 602-602-602-6", PAGE_WIDTH / 2, 38, {
+          align: "center",
+        });
+      }
 
       // =====================
       // INVOICE NUMBER + DATE (SAME LINE)
@@ -580,7 +614,7 @@ const ProductsTab = () => {
       //   .toLocaleString("sv-SE", { timeZone: "Asia/Kolkata" })
       //   .replace(/[-: ]/g, "")}`;
 
-      const invoiceDate = new Date().toLocaleString();
+      const invoiceDate = new Date().toLocaleString('en-IN');
 
       doc.setFontSize(10);
       doc.setTextColor(0);
@@ -639,31 +673,61 @@ const ProductsTab = () => {
       // =====================
       // PRODUCT TABLE
       // =====================
-      const tableColumns = [
-        "S.No",
-        "Product",
-        "Company",
-        "Unit Price",
-        "Discount",
-        "GST",
-        "Quantity",
-        "Transport Cost",
-        "Total",
-      ];
+      const tableColumns = dealerCompositeGST
+        ? [
+            "S.No",
+            "Product",
+            "Company",
+            "Unit Price",
+            "Discount",
+            "Quantity",
+            "Transport Cost",
+            "Total",
+          ]
+        : [
+            "S.No",
+            "Product",
+            "Company",
+            "Unit Price",
+            "Discount",
+            "GST",
+            "Quantity",
+            "Transport Cost",
+            "Total",
+          ];
 
-      const tableRows = selectedCart.map((item, index) => [
-        index + 1,
-        item.product_name,
-        item.company_name,
-        `Rs. ${item.product_mrp.toLocaleString()}`,
-        item.discount_percentage > 0
-          ? `${item.discount_percentage}% - ${item.discount.toLocaleString()}`
-          : "-",
-        `${item.gst}% - ${item.gst_amount.toLocaleString()}`,
-        item.quantity,
-        `Rs. ${item.transport_exclude.toLocaleString()}`,
-        `Rs. ${item.calculatedPrice.toLocaleString()}`,
-      ]);
+      const tableRows = selectedCart.map((item, index) =>
+        dealerCompositeGST
+          ? [
+              index + 1,
+              item.product_name,
+              item.company_name,
+              `Rs. ${item.product_mrp.toLocaleString()}`,
+              item.discount_percentage > 0
+                ? `${
+                    item.discount_percentage
+                  }% - ${item.discount.toLocaleString()}`
+                : "-",
+              item.quantity,
+              `Rs. ${item.transport_exclude.toLocaleString()}`,
+              `Rs. ${item.calculatedPrice.toLocaleString()}`,
+            ]
+          : [
+              index + 1,
+              item.product_name,
+              item.company_name,
+              `Rs. ${item.product_mrp.toLocaleString()}`,
+              item.discount_percentage > 0
+                ? `${
+                    item.discount_percentage
+                  }% - ${item.discount.toLocaleString()}`
+                : "-",
+              `${item.gst}% - ${item.gst_amount.toLocaleString()}`,
+              item.quantity,
+              `Rs. ${item.transport_exclude.toLocaleString()}`,
+              `Rs. ${item.calculatedPrice.toLocaleString()}`,
+            ]
+      );
 
       autoTable(doc, {
         head: [tableColumns],
@@ -692,25 +756,25 @@ const ProductsTab = () => {
       // =====================
       // SUMMARY TABLE
       // =====================
-      const totalProductCost = selectedCart.reduce((sum, item) => sum + item.product_mrp * item.quantity, 0);
-      const totalDiscount = selectedCart.reduce((sum, item) => sum + item.discount * item.quantity, 0);
+      const totalProductCost = selectedCart.reduce(
+        (sum, item) => sum + item.product_mrp * item.quantity,
+        0
+      );
+      const totalDiscount = selectedCart.reduce(
+        (sum, item) => sum + item.discount * item.quantity,
+        0
+      );
       const totalGSTAmount = getTotalGST();
 
       autoTable(doc, {
         head: [["Description", "Amount"]],
         body: [
-          [
-            "Total Product Cost",
-            `Rs. ${totalProductCost.toLocaleString()}`,
-          ],
-          [
-            "Total Discount",
-            `Rs. ${totalDiscount.toLocaleString()}`,
-          ],
-          [
-            "Total GST",
-            `Rs. ${totalGSTAmount.toLocaleString()}`,
-          ],
+          ["Total Product Cost", `Rs. ${totalProductCost.toLocaleString()}`],
+          ["Total Discount", `Rs. ${totalDiscount.toLocaleString()}`],
+          // Only show GST row if NOT composite GST scheme
+          ...(!dealerCompositeGST
+            ? [["Total GST", `Rs. ${totalGSTAmount.toLocaleString()}`]]
+            : []),
           [
             "Extra Transportation Cost",
             `Rs. ${buyFormData.extraTransportationCost.toLocaleString()}`,
@@ -751,12 +815,31 @@ const ProductsTab = () => {
         { align: "center" }
       );
 
-      doc.text(
-        `Generated on ${new Date().toLocaleString()}`,
-        PAGE_WIDTH / 2,
-        finalY + 16,
-        { align: "center" }
-      );
+      if (dealerCompositeGST) {
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(180, 0, 0);
+        doc.text(
+          "Declaration: Composition taxable person, not eligible to collect tax on supplies",
+          PAGE_WIDTH / 2,
+          finalY + 18,
+          { align: "center" }
+        );
+        doc.setTextColor(0);
+        doc.setFont("helvetica", "normal");
+        doc.text(
+          `Generated on ${new Date().toLocaleString('en-IN')}`,
+          PAGE_WIDTH / 2,
+          finalY + 28,
+          { align: "center" }
+        );
+      } else {
+        doc.text(
+          `Generated on ${new Date().toLocaleString('en-IN')}`,
+          PAGE_WIDTH / 2,
+          finalY + 16,
+          { align: "center" }
+        );
+      }
 
       // Save the PDF
       doc.save(`Invoice_${orderId}.pdf`);
@@ -930,7 +1013,7 @@ const ProductsTab = () => {
         { align: "center" }
       );
       doc.text(
-        `Generated on ${new Date().toLocaleString()}`,
+        `Generated on ${new Date().toLocaleString('en-IN')}`,
         105,
         pageHeight - 10,
         { align: "center" }
@@ -1055,6 +1138,31 @@ const ProductsTab = () => {
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#295A47] focus:border-transparent text-sm"
           />
         </div>
+        <div className="flex gap-2 mt-2">
+          <button
+            onClick={() => setShowroomStockFilter("all")}
+            className={`px-3 py-2 rounded-lg text-sm font-medium ${
+              showroomStockFilter === "all"
+                ? "bg-[#295A47] text-white"
+                : "bg-white border border-gray-300 text-gray-700"
+            }`}
+          >
+            All Products({products.length})
+          </button>
+
+          <button
+            onClick={() => setShowroomStockFilter("in_showroom")}
+            className={`px-3 py-2 rounded-lg text-sm font-medium ${
+              showroomStockFilter === "in_showroom"
+                ? "bg-[#295A47] text-white"
+                : "bg-white border border-gray-300 text-gray-700"
+            }`}
+          >
+            Showroom Stock (
+            {products.filter((p) => p.showroom_stock === 2).length}
+            )
+          </button>
+        </div>
       </div>
 
       {/* Products Grid */}
@@ -1140,14 +1248,14 @@ const ProductsTab = () => {
                   <span className="font-bold text-green-600">
                     ₹
                     {(() => {
-                      const finalProductCost = Number(product.final_product_cost || 0);
+                      const finalProductCost = Number(
+                        product.final_product_cost || 0
+                      );
                       const gstPercentage = Number(product.gst_percentage || 0);
                       const transportationCost = Number(
                         product.transportation_cost || 0
                       );
-                      return (
-                        finalProductCost 
-                      ).toFixed(2);
+                      return finalProductCost.toFixed(2);
                     })()}
                   </span>
                 </div>
@@ -1343,10 +1451,18 @@ const ProductsTab = () => {
                         <span className="text-xl font-bold text-[#295A47]">
                           ₹
                           {(() => {
-                            const finalProductCost = Number(selectedProduct.final_product_cost || 0);
-                            const gstPercentage = Number(selectedProduct.gst_percentage || 0);
-                            const productCost = (finalProductCost * 100) / (100 + gstPercentage);
-                            return productCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                            const finalProductCost = Number(
+                              selectedProduct.final_product_cost || 0
+                            );
+                            const gstPercentage = Number(
+                              selectedProduct.gst_percentage || 0
+                            );
+                            const productCost =
+                              (finalProductCost * 100) / (100 + gstPercentage);
+                            return productCost.toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            });
                           })()}
                         </span>
                       </div>
@@ -1384,12 +1500,19 @@ const ProductsTab = () => {
                               <span className="text-red-600">
                                 -₹
                                 {(() => {
-                                  const finalProductCost = Number(selectedProduct.final_product_cost || 0);
-                                  const gstPercentage = Number(selectedProduct.gst_percentage || 0);
-                                  const productCost = (100 + gstPercentage) !== 0 
-                                    ? (finalProductCost * 100) / (100 + gstPercentage) 
-                                    : 0;
-                                  const discountAmount = (productCost * discountPercentage) / 100;
+                                  const finalProductCost = Number(
+                                    selectedProduct.final_product_cost || 0
+                                  );
+                                  const gstPercentage = Number(
+                                    selectedProduct.gst_percentage || 0
+                                  );
+                                  const productCost =
+                                    100 + gstPercentage !== 0
+                                      ? (finalProductCost * 100) /
+                                        (100 + gstPercentage)
+                                      : 0;
+                                  const discountAmount =
+                                    (productCost * discountPercentage) / 100;
                                   return discountAmount.toFixed(2);
                                 })()}
                               </span>
@@ -1399,36 +1522,43 @@ const ProductsTab = () => {
                       </div>
 
                       {/* GST Section */}
-                      <div className="border-t pt-3">
-                        <h4 className="font-medium text-[#295A47] mb-2">
-                          GST Details
-                        </h4>
-                        <div className="space-y-2">
-                          <div className="flex justify-between items-center">
-                            <span className="font-medium">GST(%):</span>
-                            <span className="text-gray-600">
-                              {Number(selectedProduct.gst_percentage || 0)}%
-                            </span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="font-medium">GST Amount:</span>
-                            <span className="text-blue-600">
-                              ₹
-                              {(() => {
-                                const finalProductCost = Number(selectedProduct.final_product_cost || 0);
-                                const gstPercentage = Number(
-                                  selectedProduct.gst_percentage || 0
-                                );
-                                const productCost = (100 + gstPercentage) !== 0 
-                                  ? (finalProductCost * 100) / (100 + gstPercentage) 
-                                  : 0;
-                                const calculatedGstAmount = productCost * (gstPercentage / 100);
-                                return calculatedGstAmount.toFixed(2);
-                              })()}
-                            </span>
-                          </div>
+                      {Number(selectedProduct.composite_gst_scheme || 0) ===
+                      0 ? (
+                        <div className="border-t pt-3">
+                          <h4 className="font-medium text-[#295A47] mb-2">
+                            GST Details
+                          </h4>
+                          <div className="space-y-2">
+                            <div className="flex justify-between items-center">
+                              <span className="font-medium">GST(%):</span>
+                              <span className="text-gray-600">
+                                {Number(selectedProduct.gst_percentage || 0)}%
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="font-medium">GST Amount:</span>
+                              <span className="text-blue-600">
+                                ₹
+                                {(() => {
+                                  const finalProductCost = Number(
+                                    selectedProduct.final_product_cost || 0
+                                  );
+                                  const gstPercentage = Number(
+                                    selectedProduct.gst_percentage || 0
+                                  );
+                                  const productCost =
+                                    100 + gstPercentage !== 0
+                                      ? (finalProductCost * 100) /
+                                        (100 + gstPercentage)
+                                      : 0;
+                                  const calculatedGstAmount =
+                                    productCost * (gstPercentage / 100);
+                                  return calculatedGstAmount.toFixed(2);
+                                })()}
+                              </span>
+                            </div>
 
-                          {/* <div className="flex justify-between items-center">
+                            {/* <div className="flex justify-between items-center">
                             <span className="font-medium">
                               Transportation Cost:
                             </span>
@@ -1440,42 +1570,51 @@ const ProductsTab = () => {
                             </span>
                           </div> */}
 
-                          <div className="flex justify-between items-center">
-                            <span className="font-medium">
-                              Final Price (per unit):
-                            </span>
-                            <div className="flex items-center gap-2">
-                              {Number((selectedProduct as any).sell_mrp) > 0 && (
-                                <span className="text-red-500 line-through text-sm">
+                            <div className="flex justify-between items-center">
+                              <span className="font-medium">
+                                Final Price (per unit):
+                              </span>
+                              <div className="flex items-center gap-2">
+                                {Number((selectedProduct as any).sell_mrp) >
+                                  0 && (
+                                  <span className="text-red-500 line-through text-sm">
+                                    ₹
+                                    {Number(
+                                      (selectedProduct as any).sell_mrp
+                                    ).toLocaleString()}
+                                  </span>
+                                )}
+                                <span className="text-xl font-bold text-green-600">
                                   ₹
-                                  {Number(
-                                    (selectedProduct as any).sell_mrp
-                                  ).toLocaleString()}
+                                  {(() => {
+                                    const finalProductCost = Number(
+                                      selectedProduct.final_product_cost || 0
+                                    );
+                                    const gstPercentage = Number(
+                                      selectedProduct.gst_percentage || 0
+                                    );
+
+                                    const productCost =
+                                      100 + gstPercentage !== 0
+                                        ? (finalProductCost * 100) /
+                                          (100 + gstPercentage)
+                                        : 0;
+
+                                    const discountAmount =
+                                      (productCost * discountPercentage) / 100;
+                                    const gstAmount =
+                                      productCost * (gstPercentage / 100);
+
+                                    const finalPrice =
+                                      productCost - discountAmount + gstAmount;
+                                    return finalPrice.toFixed(2);
+                                  })()}
                                 </span>
-                              )}
-                              <span className="text-xl font-bold text-green-600">
-                              ₹
-                              {(() => {
-                                const finalProductCost = Number(selectedProduct.final_product_cost || 0);
-                                const gstPercentage = Number(
-                                  selectedProduct.gst_percentage || 0
-                                );
-
-                                const productCost = (100 + gstPercentage) !== 0
-                                  ? (finalProductCost * 100) / (100 + gstPercentage)
-                                  : 0;
-
-                                const discountAmount = (productCost * discountPercentage) / 100;
-                                const gstAmount = productCost * (gstPercentage / 100);
-
-                                const finalPrice = productCost - discountAmount + gstAmount;
-                                return finalPrice.toFixed(2);
-                              })()}
-                            </span>
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
+                      ) : null}
 
                       {/* Extra Transport Cost Section - Only for transport excluded products */}
                       {selectedProduct.transport_exclude === 1 && (
@@ -1493,11 +1632,11 @@ const ProductsTab = () => {
                               value={extraTransportCost}
                               onChange={(
                                 e: React.ChangeEvent<HTMLInputElement>
-                              ) =>
+                              ) => {
                                 setExtraTransportCost(
                                   Number(e.target.value) || 0
-                                )
-                              }
+                                );
+                              }}
                               onWheel={(e) => e.preventDefault()}
                               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#295A47] focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:m-0 [&::-webkit-inner-spin-button]:m-0 [&::-webkit-outer-spin-button]:-webkit-appearance-none [&::-webkit-inner-spin-button]:-webkit-appearance-none [&::-moz-appearance]:textfield [&::-webkit-outer-spin-button]:hidden [&::-webkit-inner-spin-button]:hidden [&::-webkit-outer-spin-button]:invisible [&::-webkit-inner-spin-button]:invisible"
                               placeholder="0"
@@ -1573,23 +1712,28 @@ const ProductsTab = () => {
                   )}
 
                   <div className="text-right">
-                    <div className="text-sm text-gray-500">
-                      Total Price(including GST)
-                    </div>
+                    <div className="text-sm text-gray-500">Total Price</div>
                     <div className="text-xl font-bold text-[#295A47]">
                       ₹
                       {(() => {
-                        const finalProductCost = Number(selectedProduct.final_product_cost || 0);
-                        const gstPercentage = Number(selectedProduct.gst_percentage || 0);
+                        const finalProductCost = Number(
+                          selectedProduct.final_product_cost || 0
+                        );
+                        const gstPercentage = Number(
+                          selectedProduct.gst_percentage || 0
+                        );
 
-                        const productCost = (100 + gstPercentage) !== 0
-                          ? (finalProductCost * 100) / (100 + gstPercentage)
-                          : 0;
+                        const productCost =
+                          100 + gstPercentage !== 0
+                            ? (finalProductCost * 100) / (100 + gstPercentage)
+                            : 0;
 
-                        const discountAmount = (productCost * discountPercentage) / 100;
+                        const discountAmount =
+                          (productCost * discountPercentage) / 100;
                         const gstAmount = productCost * (gstPercentage / 100);
 
-                        const finalPrice = productCost - discountAmount + gstAmount;
+                        const finalPrice =
+                          productCost - discountAmount + gstAmount;
 
                         const transportCost =
                           selectedProduct.transport_exclude === 1
@@ -1619,6 +1763,7 @@ const ProductsTab = () => {
         </div>
       )}
 
+      {/* Cart Modal */}
       <CartModal
         showCart={showCart}
         setShowCart={setShowCart}
@@ -1651,7 +1796,7 @@ const ProductsTab = () => {
         showBuyModal={showBuyModal}
       />
 
-      {/* Full Image Modal */}
+      {/* Full Image Modal for Product Details */}
       {showFullImage && selectedProduct && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 pb-15">
           <div className="relative max-w-4xl max-h-[90vh]">

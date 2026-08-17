@@ -125,8 +125,16 @@ export async function DELETE(
 
     // Delete image files
     for (const design of designs) {
-      await deleteDesignLocalFile(design.image_path);
-    }
+  // Delete image if exists
+  if (design.image_path) {
+    await deleteDesignLocalFile(design.image_path);
+  }
+
+  // Delete PDF if exists
+  if (design["2d_pdf_path"]) {
+    await deleteDesignLocalFile(design["2d_pdf_path"]);
+  }
+}
 
     // Soft delete all designs in the room
     await db.query(

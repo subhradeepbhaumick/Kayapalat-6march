@@ -811,7 +811,7 @@ const CartModal: React.FC<CartModalProps> = ({
                     {/* QR Code for UPI Payment */}
                     <div className="mt-4 flex justify-center">
                       <img
-                        src="/Kayapalat Payment Qr .jpeg"
+                        src="/kayapalat_payment_qr.jpeg"
                         alt="Kayapalat Payment QR Code"
                         className="w-32 h-32 rounded-lg shadow-md"
                       />

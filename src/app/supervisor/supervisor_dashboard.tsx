@@ -1,83 +1,104 @@
-'use client';
-
-import React, { useState } from 'react';
-import { Menu, Bell, LayoutDashboard, Users, UserPlus, BarChart3, ClipboardList, Search, LogOut, User, Settings, Eye, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
-import { useSession, signOut } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
-import toast from 'react-hot-toast';
-import MyProjectsPage from './supervisor_myprojects';
-import SiteVisitPage from './supervisor_sitevisit';
-import ChatPage from './supervisor_issue';
-import ExpensesPage from './supervisor_projectexpense';
-import ProductsTab from './supervisor_products';
-import OrdersTab from './supervisor_showorder';
-
+"use client";
+import React, { useState, useEffect } from "react";
+import {  Menu,  Bell,  LayoutDashboard,  Users,UserPlus,  BarChart3,  ClipboardList,  Search,  LogOut,  User,  Settings,  Eye,  CheckCircle,XCircle,AlertTriangle,} from "lucide-react";
+import { useSession, signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
+import MyProjectsPage from "./supervisor_myprojects";
+import SiteVisitPage from "./supervisor_sitevisit";
+import ProductsTab from "./supervisor_products";
+import OrdersTab from "./supervisor_showorder";
+import VendorManagementPage from "./supervisor_vendor";
+import EmployeeAttendancePage from "./attendance_page";
 const SupervisorDashboard = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
-  const [activeTab, setActiveTab] = useState('Dashboard');
+  const [activeTab, setActiveTab] = useState("Dashboard");
   const { data: session, status } = useSession();
   const user = session?.user;
   const router = useRouter();
-
+  const [stats, setStats] = useState({ totalSiteVisits: 0, totalProjects: 0 });
   const handleLogout = async () => {
     try {
       const callbackUrl = `${window.location.origin}/login`;
       await signOut({ callbackUrl });
-      toast.success('Logged out successfully');
+      toast.success("Logged out successfully");
     } catch (error) {
-      console.error('Logout failed:', error);
-      toast.error('Logout failed');
+      console.error("Logout failed:", error);
+      toast.error("Logout failed");
     }
   };
-
   React.useEffect(() => {
     const handleResize = () => {
       setSidebarCollapsed(window.innerWidth < 1024);
     };
-
-    window.addEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
     handleResize(); // Set initial state
-    return () => window.removeEventListener('resize', handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
-
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await fetch("/api/supervisor/dashboard-stats");
+        const data = await res.json();
+        setStats({
+          totalSiteVisits: data.totalSiteVisits || 0,
+          totalProjects: data.totalProjects || 0,
+        });
+      } catch (error) {
+        console.error("Failed to fetch stats:", error);
+      }
+    };
+    fetchStats();
+  }, []);
   React.useEffect(() => {
     const handleFullscreenChange = () => {
       const doc = document as any;
-      if (!document.fullscreenElement && !doc.webkitFullscreenElement && !doc.mozFullScreenElement && !doc.msFullscreenElement) {
+      if (
+        !document.fullscreenElement &&
+        !doc.webkitFullscreenElement &&
+        !doc.mozFullScreenElement &&
+        !doc.msFullscreenElement
+      ) {
         setSidebarCollapsed(true);
       }
     };
-
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
-    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
-    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
-
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
+    document.addEventListener("mozfullscreenchange", handleFullscreenChange);
+    document.addEventListener("MSFullscreenChange", handleFullscreenChange);
     return () => {
-      document.removeEventListener('fullscreenchange', handleFullscreenChange);
-      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
-      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
-      document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      document.removeEventListener(
+        "webkitfullscreenchange",
+        handleFullscreenChange
+      );
+      document.removeEventListener(
+        "mozfullscreenchange",
+        handleFullscreenChange
+      );
+      document.removeEventListener(
+        "MSFullscreenChange",
+        handleFullscreenChange
+      );
     };
   }, []);
-
   const sidebarItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', key: 'Dashboard' },
-    { icon: Users, label: 'My Projects', key: 'My Projects' },
-    { icon: BarChart3, label: 'Site Visit', key: 'Site Visit' },
-    { icon: ClipboardList, label: 'Issue', key: 'Issue' },
-    { icon: UserPlus, label: 'Expense', key: 'Expense' },
-    { icon: Search, label: 'Products', key: 'Products' },
-    { icon: CheckCircle, label: 'Orders', key: 'Orders' },
-    // { icon: Settings, label: 'Settings', key: 'Settings' },
+    { icon: LayoutDashboard, label: "Dashboard", key: "Dashboard" },
+    { icon: Users, label: "My Projects", key: "My Projects" },
+    { icon: Eye, label: "Vendor", key: "Vendor" },
+    { icon: BarChart3, label: "Site Visit", key: "Site Visit" },
+    { icon: Search, label: "Products", key: "Products" },
+    { icon: CheckCircle, label: "Orders", key: "Orders" },
+    { icon: UserPlus, label: "Attendance", key: "Attendance" },
   ];
-
   return (
     <div className="min-h-screen bg-[#D2EBD0] flex">
       {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 bg-white shadow-lg transition-transform duration-300 ease-in-out w-64
-        ${sidebarCollapsed ? '-translate-x-full' : 'translate-x-0'} 
-        lg:translate-x-0 ${sidebarCollapsed ? 'lg:w-16' : 'lg:w-64'}`}>
+      <div
+        className={`fixed inset-y-0 left-0 z-50 bg-white shadow-lg transition-transform duration-300 ease-in-out w-64
+        ${sidebarCollapsed ? "-translate-x-full" : "translate-x-0"} 
+        lg:translate-x-0 ${sidebarCollapsed ? "lg:w-16" : "lg:w-64"}`}
+      >
         {/* Header Section */}
         <div className="p-4 border-b bg-[#D7E7D0]">
           <div className="flex items-center justify-between">
@@ -89,24 +110,29 @@ const SupervisorDashboard = () => {
                     alt="Profile"
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                      const nextSibling = e.currentTarget.nextElementSibling as HTMLElement;
+                      e.currentTarget.style.display = "none";
+                      const nextSibling = e.currentTarget
+                        .nextElementSibling as HTMLElement;
                       if (nextSibling) {
-                        nextSibling.style.display = 'block';
+                        nextSibling.style.display = "block";
                       }
                     }}
                   />
                   <User className="w-6 h-6 text-gray-500 hidden" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-[#DC0835]">{user?.name || "Supervisor"}</h3>
+                  <h3 className="font-semibold text-[#DC0835]">
+                    {user?.name || "Supervisor"}
+                  </h3>
                   <p className="text-sm text-gray-600">Supervisor</p>
-                  <p className="text-sm text-black-600">ID: <strong>{user?.id || "N/A"}</strong></p>
+                  <p className="text-sm text-black-600">
+                    ID: <strong>{user?.id || "N/A"}</strong>
+                  </p>
                 </div>
               </div>
             )}
             <button
-              onClick={() => setSidebarCollapsed(p => !p)}
+              onClick={() => setSidebarCollapsed((p) => !p)}
               className="text-[#295A47] hover:text-[#1e3d32] transition-colors"
             >
               <Menu size={20} />
@@ -118,25 +144,39 @@ const SupervisorDashboard = () => {
             <div
               key={index}
               onClick={() => setActiveTab(item.key)}
-              className={`flex items-center ${sidebarCollapsed ? 'justify-center px-3' : 'px-6'} py-3 cursor-pointer transition-colors ${
+              className={`flex items-center ${
+                sidebarCollapsed ? "justify-center px-3" : "px-6"
+              } py-3 cursor-pointer transition-colors ${
                 activeTab === item.key
-                  ? 'bg-[#D7E7D0] text-[#295A47] border-r-4 border-[#295A47]'
-                  : 'text-gray-700 hover:bg-gray-100'
+                  ? "bg-[#D7E7D0] text-[#295A47] border-r-4 border-[#295A47]"
+                  : "text-gray-700 hover:bg-gray-100"
               }`}
             >
               <item.icon className="w-5 h-5" />
-              {!sidebarCollapsed && <span className="font-medium ml-3">{item.label}</span>}
+              {!sidebarCollapsed && (
+                <span className="font-medium ml-3">{item.label}</span>
+              )}
             </div>
           ))}
         </nav>
       </div>
-
       {/* Main Content */}
-      <div className={`flex-1 overflow-y-auto pt-20 transition-all duration-300 ease-in-out ${sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'}`}>
+      <div
+        className={`flex-1 overflow-y-auto pt-20 transition-all duration-300 ease-in-out ${
+          sidebarCollapsed ? "lg:ml-16" : "lg:ml-64"
+        }`}
+      >
         {/* Navbar */}
-        <div className={`bg-white shadow-md p-4 flex justify-between items-center fixed top-0 z-40 right-0 transition-all duration-300 ease-in-out ${sidebarCollapsed ? 'left-0 lg:left-16' : 'left-0 lg:left-64'}`}>
+        <div
+          className={`bg-white shadow-md p-4 flex justify-between items-center fixed top-0 z-40 right-0 transition-all duration-300 ease-in-out ${
+            sidebarCollapsed ? "left-0 lg:left-16" : "left-0 lg:left-64"
+          }`}
+        >
           <div className="flex items-center">
-            <button onClick={() => setSidebarCollapsed(p => !p)} className="p-2 text-[#295A47] lg:hidden">
+            <button
+              onClick={() => setSidebarCollapsed((p) => !p)}
+              className="p-2 text-[#295A47] lg:hidden"
+            >
               <Menu size={24} />
             </button>
             <div className="flex items-center space-x-3 pl-2">
@@ -145,14 +185,17 @@ const SupervisorDashboard = () => {
                 alt="Kayapalat Logo"
                 className="h-6 w-auto"
                 onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                  const nextSibling = e.currentTarget.nextElementSibling as HTMLElement;
+                  e.currentTarget.style.display = "none";
+                  const nextSibling = e.currentTarget
+                    .nextElementSibling as HTMLElement;
                   if (nextSibling) {
-                    nextSibling.style.display = 'block';
+                    nextSibling.style.display = "block";
                   }
                 }}
               />
-              <h1 className="text-xl font-bold text-[#295A47] hidden">KAYAPALAT</h1>
+              <h1 className="text-xl font-bold text-[#295A47] hidden">
+                KAYAPALAT
+              </h1>
             </div>
           </div>
           <button
@@ -168,14 +211,13 @@ const SupervisorDashboard = () => {
             onMouseEnter={(e) => {
               e.currentTarget.style.width = "125px";
               e.currentTarget.style.borderRadius = "40px";
-
               const iconElement = e.currentTarget.querySelector(".logout-icon");
               if (iconElement instanceof HTMLElement) {
                 iconElement.style.width = "30%";
                 iconElement.style.paddingLeft = "20px";
               }
-
-              const labelElement = e.currentTarget.querySelector(".logout-text");
+              const labelElement =
+                e.currentTarget.querySelector(".logout-text");
               if (labelElement instanceof HTMLElement) {
                 labelElement.style.opacity = "1";
                 labelElement.style.width = "70%";
@@ -185,14 +227,13 @@ const SupervisorDashboard = () => {
             onMouseLeave={(e) => {
               e.currentTarget.style.width = "45px";
               e.currentTarget.style.borderRadius = "50%";
-
               const iconElement = e.currentTarget.querySelector(".logout-icon");
               if (iconElement instanceof HTMLElement) {
                 iconElement.style.width = "100%";
                 iconElement.style.paddingLeft = "0px";
               }
-
-              const labelElement = e.currentTarget.querySelector(".logout-text");
+              const labelElement =
+                e.currentTarget.querySelector(".logout-text");
               if (labelElement instanceof HTMLElement) {
                 labelElement.style.opacity = "0";
                 labelElement.style.width = "0%";
@@ -214,7 +255,6 @@ const SupervisorDashboard = () => {
                 />
               </svg>
             </div>
-
             <div
               className="logout-text absolute right-0 font-semibold text-white"
               style={{
@@ -229,48 +269,76 @@ const SupervisorDashboard = () => {
             </div>
           </button>
         </div>
-
         {/* Welcome Bar */}
         <div className="bg-[#295A47] text-white py-3 px-8">
           <div className="max-w-4xl mx-auto">
-            <h4 className="text-lg font-semibold text-center">Welcome to Supervisor Dashboard</h4>
+            <h4 className="text-lg font-semibold text-center">
+              Welcome to Supervisor Dashboard
+            </h4>
           </div>
         </div>
-
         {/* Hero Section */}
         <div className="p-4 md:p-8">
           <div className="max-w-8xl mx-auto">
             <div className="bg-white rounded-lg shadow-lg p-4 md:p-8 mb-8">
-              {activeTab === 'Dashboard' && (
+              {activeTab === "Dashboard" && (
                 <>
-                  <div className="text-center mb-8">
+                  <div className="text-center mb-10">
                     <h1 className="text-4xl font-bold text-[#295A47] mb-4">
                       Supervisor Dashboard
                     </h1>
                     <p className="text-gray-600 text-lg">
-                      Oversee team performance, manage labours, and monitor business operations.
+                      Oversee team performance, manage labours, and monitor
+                      business operations.
                     </p>
+                  </div>
+                  {/* Stats Cards */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Total Site Visit */}
+                    <div className="bg-gradient-to-r from-[#295A47] to-[#3d7a61] rounded-2xl p-6 shadow-lg text-white">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm opacity-80 mb-2">
+                            Total Site Visit
+                          </p>
+                          <h2 className="text-4xl font-bold">
+                            {stats.totalSiteVisits}
+                          </h2>
+                        </div>
+                        <div className="bg-white/20 p-4 rounded-full">
+                          <BarChart3 size={34} />
+                        </div>
+                      </div>
+                    </div>
+                    {/* Total Handled Projects */}
+                    <div className="bg-gradient-to-r from-[#DC0835] to-[#ff4d6d] rounded-2xl p-6 shadow-lg text-white">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm opacity-80 mb-2">
+                            Total Handled Projects
+                          </p>
+                          <h2 className="text-4xl font-bold">
+                            {stats.totalProjects}
+                          </h2>
+                        </div>
+                        <div className="bg-white/20 p-4 rounded-full">
+                          <ClipboardList size={34} />
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </>
               )}
-
-              {activeTab === 'My Projects' && <MyProjectsPage />}
-
-              {activeTab === 'Site Visit' && <SiteVisitPage />}
-
-              {activeTab === 'Issue' && <ChatPage />}
-
-              {activeTab === 'Expense' && <ExpensesPage />}
-
-              {activeTab === 'Products' && <ProductsTab />}
-
-              {activeTab === 'Orders' && <OrdersTab />}
-
+              {activeTab === "My Projects" && <MyProjectsPage />}
+              {activeTab === "Site Visit" && <SiteVisitPage />}
+              {activeTab === "Vendor" && <VendorManagementPage/>}
+              {activeTab === "Products" && <ProductsTab />}
+              {activeTab === "Orders" && <OrdersTab />}
+              {activeTab === "Attendance" && <EmployeeAttendancePage />}
             </div>
           </div>
         </div>
       </div>
-
       {/* Overlay for mobile sidebar */}
       {!sidebarCollapsed && (
         <div // This overlay will only show on mobile when the sidebar is open
@@ -281,5 +349,4 @@ const SupervisorDashboard = () => {
     </div>
   );
 };
-
 export default SupervisorDashboard;

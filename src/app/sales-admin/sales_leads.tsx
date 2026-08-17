@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, UserPlus } from 'lucide-react';
 import RemarkModal from "./RemarkModal";
 import { useSession } from 'next-auth/react';
-
+import toast from "react-hot-toast";
 type Tab = 'cold' | 'site' | 'booking' | 'booked';
 
 type Remark = {
@@ -73,33 +73,38 @@ const LeadsTab = () => {
         });
         const data = await res.json();
         if (data.projects) {
-          setLeads(data.projects.map((project: any, index: number) => ({
-            id: project.appointment_id || index + 1,
-            agentId: project.agent_id || 'N/A',
-            agentName: project.agent_name || 'N/A',
-            clientName: project.client_name || 'N/A',
-            clientContact: project.client_phone || 'N/A',
-            AppoinmentID: project.appointment_id || 'N/A',
-            projectName: project.project_name || 'N/A',
-            projectvalue: project.project_value?.toString() || 'N/A',
-            agentshare: project.agent_share?.toString() || 'N/A',
-            Commission: project.commission?.toString() || 'N/A',
-            propertyAddress: project.location || 'N/A',
-            details: project.details || 'N/A',
-            coldCallDate: project.cold_call_date || 'N/A',
-            coldCallTime: project.cold_call_time || 'N/A',
-            coldCallStatus: project.cold_call_status || 'N/A',
-            siteVisitDate: project.site_visit_date || 'N/A',
-            siteVisitTime: project.site_visit_time || 'N/A',
-            siteVisitStatus: project.site_visit_status || 'N/A',
-            bookingDate: project.booking_date || 'N/A',
-            bookingTime: project.booking_time || 'N/A',
-            bookingStatus: project.booking_status || 'N/A',
-            BookedInNext: project.bookedInNext || 'N/A',
-            bookingId: 'N/A', // Not in projects table
-            propertyType: project.property_type || 'N/A',
-            remarks: [], // Remarks not in projects table
-          })));
+          const commissionProjects = data.projects.filter(
+            (project: any) => project.lead_type === 1
+          );
+
+          setLeads(
+            commissionProjects.map((project: any, index: number) => ({
+              id: project.appointment_id || index + 1,
+              agentId: project.agent_id || 'N/A',
+              agentName: project.agent_name || 'N/A',
+              clientName: project.client_name || 'N/A',
+              clientContact: project.client_phone || 'N/A',
+              AppoinmentID: project.appointment_id || 'N/A',
+              projectName: project.project_name || 'N/A',
+              projectvalue: project.project_value?.toString() || 'N/A',
+              agentshare: project.agent_share?.toString() || 'N/A',
+              Commission: project.commission?.toString() || 'N/A',
+              propertyAddress: project.location || 'N/A',
+              details: project.details || 'N/A',
+              coldCallDate: project.cold_call_date || 'N/A',
+              coldCallTime: project.cold_call_time || 'N/A',
+              coldCallStatus: project.cold_call_status || 'N/A',
+              siteVisitDate: project.site_visit_date || 'N/A',
+              siteVisitTime: project.site_visit_time || 'N/A',
+              siteVisitStatus: project.site_visit_status || 'N/A',
+              bookingDate: project.booking_date || 'N/A',
+              bookingTime: project.booking_time || 'N/A',
+              bookingStatus: project.booking_status || 'N/A',
+              BookedInNext: project.bookedInNext || 'N/A',
+              bookingId: 'N/A', // Not in projects table
+              propertyType: project.property_type || 'N/A',
+              remarks: [], // Remarks not in projects table
+            })));
         }
       } catch (error) {
         console.error('Failed to fetch projects:', error);
@@ -140,7 +145,7 @@ const LeadsTab = () => {
       fetchRemarks();
     }
   }, [isPopupOpen, currentLeadId, leads]);
-  
+
 
   // Filter leads by tab, status, dates, showEntries, and search
   const filterData = () => {
@@ -154,19 +159,19 @@ const LeadsTab = () => {
     } else if (activeTab === 'booking') {
       filtered = filtered.filter(lead => lead.siteVisitStatus === 'Confirmed');
     } else if (activeTab === 'booked') {
-        filtered = filtered.filter(lead => lead.bookingStatus === 'Booked');
-}
-
-  // Status filter
-  if (status !== 'all' && status !== 'By Time Ascending' && status !== 'By Time Descending') {
-    if (activeTab === 'cold') {
-      filtered = filtered.filter(lead => lead.coldCallStatus === status);
-    } else if (activeTab === 'site') {
-      filtered = filtered.filter(lead => lead.siteVisitStatus === status);
-    } else if (activeTab === 'booking') {
-      filtered = filtered.filter(lead => lead.bookingStatus === status);
+      filtered = filtered.filter(lead => lead.bookingStatus === 'Booked');
     }
-  }
+
+    // Status filter
+    if (status !== 'all' && status !== 'By Time Ascending' && status !== 'By Time Descending') {
+      if (activeTab === 'cold') {
+        filtered = filtered.filter(lead => lead.coldCallStatus === status);
+      } else if (activeTab === 'site') {
+        filtered = filtered.filter(lead => lead.siteVisitStatus === status);
+      } else if (activeTab === 'booking') {
+        filtered = filtered.filter(lead => lead.bookingStatus === status);
+      }
+    }
 
     // Date filter
     if (fromDate) {
@@ -277,24 +282,30 @@ const LeadsTab = () => {
     else if (field === 'BookedInNext') updates.booked_in_next = value;
     else if (field === 'bookingId') updates.booking_id = value;
 
-    try {
-      const res = await fetch('/api/sales-admin/projects', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          appointment_id: leads.find(lead => lead.id === id)?.AppoinmentID,
-          updates,
-        }),
-      });
-      if (!res.ok) {
-        console.error('Failed to update project');
-      }
-    } catch (error) {
-      console.error('Error updating project:', error);
-    }
+try {
+  const res = await fetch('/api/sales-admin/projects', {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify({
+      appointment_id: leads.find(lead => lead.id === id)?.AppoinmentID,
+      updates,
+    }),
+  });
+
+  const data = await res.json();
+
+  if (res.ok) {
+    toast.success("Lead updated successfully.");
+  } else {
+    toast.error(data.message || "Failed to update project.");
+  }
+} catch (error) {
+  console.error("Error updating project:", error);
+  toast.error("Something went wrong while updating the lead.");
+}
   };
 
   // Stats for site visit
@@ -358,59 +369,59 @@ const LeadsTab = () => {
     } catch (error) {
       console.error('Error updating booking status:', error);
     }
-     // 🎉 Show popup
+    // 🎉 Show popup
     setShowBookedPopup(true);
   };
   const handleShareChange = async (id: number, field: string, value: string) => {
-  setLeads((prevLeads) =>
-    prevLeads.map((lead) => {
-      if (lead.id === id) {
-        let updatedLead = { ...lead, [field]: value };
+    setLeads((prevLeads) =>
+      prevLeads.map((lead) => {
+        if (lead.id === id) {
+          let updatedLead = { ...lead, [field]: value };
 
-        // Clean inputs: remove ₹, %, commas, and spaces
-        const cleanValue = (v: string) =>
-          parseFloat(v.replace(/[₹,%\s]/g, '').replace(/,/g, '') || '0');
+          // Clean inputs: remove ₹, %, commas, and spaces
+          const cleanValue = (v: string) =>
+            parseFloat(v.replace(/[₹,%\s]/g, '').replace(/,/g, '') || '0');
 
-        const projectValue = cleanValue(updatedLead.projectvalue);
-        const commission = cleanValue(updatedLead.Commission);
+          const projectValue = cleanValue(updatedLead.projectvalue);
+          const commission = cleanValue(updatedLead.Commission);
 
-        // Auto-calculate if both are valid numbers
-        if (projectValue > 0 && commission > 0) {
-          updatedLead.agentshare = ((projectValue * commission) / 100).toFixed(2);
-        } else {
-          updatedLead.agentshare = '';
+          // Auto-calculate if both are valid numbers
+          if (projectValue > 0 && commission > 0) {
+            updatedLead.agentshare = ((projectValue * commission) / 100).toFixed(2);
+          } else {
+            updatedLead.agentshare = '';
+          }
+
+          return updatedLead;
         }
+        return lead;
+      })
+    );
 
-        return updatedLead;
+    // Prepare updates object for API
+    const updates: any = {};
+    if (field === 'projectvalue') updates.project_value = parseFloat(value.replace(/[₹,%\s]/g, '').replace(/,/g, '') || '0');
+    else if (field === 'Commission') updates.commission = parseFloat(value.replace(/[₹,%\s]/g, '').replace(/,/g, '') || '0');
+
+    try {
+      const res = await fetch('/api/sales-admin/projects', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          appointment_id: leads.find(lead => lead.id === id)?.AppoinmentID,
+          updates,
+        }),
+      });
+      if (!res.ok) {
+        console.error('Failed to update project');
       }
-      return lead;
-    })
-  );
-
-  // Prepare updates object for API
-  const updates: any = {};
-  if (field === 'projectvalue') updates.project_value = parseFloat(value.replace(/[₹,%\s]/g, '').replace(/,/g, '') || '0');
-  else if (field === 'Commission') updates.commission = parseFloat(value.replace(/[₹,%\s]/g, '').replace(/,/g, '') || '0');
-
-  try {
-    const res = await fetch('/api/sales-admin/projects', {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      credentials: 'include',
-      body: JSON.stringify({
-        appointment_id: leads.find(lead => lead.id === id)?.AppoinmentID,
-        updates,
-      }),
-    });
-    if (!res.ok) {
-      console.error('Failed to update project');
+    } catch (error) {
+      console.error('Error updating project:', error);
     }
-  } catch (error) {
-    console.error('Error updating project:', error);
-  }
-};
+  };
 
   // Handle edit
   const handleEdit = (id: number) => {
@@ -475,7 +486,7 @@ const LeadsTab = () => {
         part
       )
     );
-};
+  };
 
 
   // Close popup
@@ -494,37 +505,33 @@ const LeadsTab = () => {
         {/* Tabs */}
         <div className="flex gap-4">
           <button
-            className={`px-2  rounded-3xl ${
-              activeTab === "cold" ? "bg-green-900 text-white" : "bg-white border"
-            }`}
+            className={`px-2  rounded-3xl ${activeTab === "cold" ? "bg-green-900 text-white" : "bg-white border"
+              }`}
             onClick={() => setActiveTab("cold")}
           >
             Cold Calling
           </button>
           <button
-            className={`px-2 py-1 rounded-3xl ${
-              activeTab === "site" ? "bg-green-900 text-white" : "bg-white border"
-            }`}
+            className={`px-2 py-1 rounded-3xl ${activeTab === "site" ? "bg-green-900 text-white" : "bg-white border"
+              }`}
             onClick={() => setActiveTab("site")}
           >
             Site Visit
           </button>
           <button
-            className={`px-2 py-1 rounded-3xl ${
-              activeTab === "booking"
-                ? "bg-green-900 text-white"
-                : "bg-white border"
-            }`}
+            className={`px-2 py-1 rounded-3xl ${activeTab === "booking"
+              ? "bg-green-900 text-white"
+              : "bg-white border"
+              }`}
             onClick={() => setActiveTab("booking")}
           >
             Hot Client
           </button>
           <button
-            className={`px-2 py-1 rounded-3xl ${
-              activeTab === "booked"
-                ? "bg-green-900 text-white"
-                : "bg-white border"
-            }`}
+            className={`px-2 py-1 rounded-3xl ${activeTab === "booked"
+              ? "bg-green-900 text-white"
+              : "bg-white border"
+              }`}
             onClick={() => setActiveTab("booked")}
           >
             Booked
@@ -595,7 +602,42 @@ const LeadsTab = () => {
           <span className="ml-2 text-sm text-gray-600">entries</span>
         </div>
       </div>
+              <div className="w-full rounded-xl border border-orange-100 bg-gradient-to-r from-orange-50 to-red-50 px-4 py-3 shadow-sm">
+        <div className="flex flex-col items-center justify-between gap-2 sm:flex-row">
 
+          {/* Motivation */}
+          <div className="text-center sm:text-left">
+            <p className="text-sm font-bold text-gray-800">
+              🔥 Make{" "}
+              <span className="text-[rgb(207,0,6)]">
+                75 connected calls daily
+              </span>{" "}
+              to book more projects!
+            </p>
+
+            <p className="text-xs font-medium text-gray-500">
+              More Projects ={" "}
+              <span className="font-bold text-[rgb(255,170,0)]">
+                More Incentive 💰
+              </span>
+            </p>
+          </div>
+
+          {/* Incentive */}
+          <div className="flex items-center gap-2 text-xs font-bold">
+            <div className="rounded-lg bg-white px-3 py-2 text-center shadow-sm">
+              <span className="text-gray-500">Below ₹10L</span>
+              <span className="ml-1 text-[rgb(207,0,6)]">₹2,500</span>
+            </div>
+
+            <div className="rounded-lg bg-white px-3 py-2 text-center shadow-sm">
+              <span className="text-gray-500">₹10L+</span>
+              <span className="ml-1 text-[rgb(207,0,6)]">₹5,000</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
       {/* Stats for Site Visit */}
       {activeTab === "site" && (
         <div className="flex gap-6 mb-6">
@@ -692,7 +734,7 @@ const LeadsTab = () => {
                   <td className="border px-4 py-2">{highlightText(lead.AppoinmentID)}</td>
                   {activeTab === 'cold' && (
                     <>
-                    <td className="border px-4 py-2">
+                      <td className="border px-4 py-2">
                         <input
                           type="text"
                           value={lead.projectName}
@@ -709,7 +751,7 @@ const LeadsTab = () => {
                         />
                       </td>
 
-                      <td className="border px-4 py-2"> 
+                      <td className="border px-4 py-2">
                         <input
                           type="text"
                           value={lead.Commission}
@@ -813,7 +855,7 @@ const LeadsTab = () => {
                         />
                       </td>
 
-                      <td className="border px-4 py-2"> 
+                      <td className="border px-4 py-2">
                         <input
                           type="text"
                           value={lead.Commission}
@@ -909,7 +951,7 @@ const LeadsTab = () => {
                         />
                       </td>
 
-                      <td className="border px-4 py-2"> 
+                      <td className="border px-4 py-2">
                         <input
                           type="text"
                           value={lead.Commission}
@@ -1020,81 +1062,81 @@ const LeadsTab = () => {
                     </>
                   )}
                   {activeTab === 'booked' && (
-                  <>
-                    <td className="border px-4 py-2">{highlightText(lead.projectName)}</td>
-                    <td className="border px-4 py-2">{highlightText(lead.projectvalue)}</td>
-                    <td className="border px-4 py-2">{highlightText(lead.Commission)}</td>
-                    <td className="border px-4 py-2">{highlightText(lead.agentshare)}</td>
-                    <td className="border px-4 py-2">{highlightText(lead.propertyAddress)}</td>
-                    <td className="border px-4 py-2">{lead.details}</td>
-                    <td className="border px-4 py-2">
-                      <select
-                        value={lead.propertyType}
-                        disabled
-                        className="border p-1 rounded w-full bg-gray-100 cursor-not-allowed"
-                      >
-                        <option value="">Select</option>
-                        <option value="Residential">Residential</option>
-                        <option value="Commercial">Commercial</option>
-                      </select>
-                    </td>
+                    <>
+                      <td className="border px-4 py-2">{highlightText(lead.projectName)}</td>
+                      <td className="border px-4 py-2">{highlightText(lead.projectvalue)}</td>
+                      <td className="border px-4 py-2">{highlightText(lead.Commission)}</td>
+                      <td className="border px-4 py-2">{highlightText(lead.agentshare)}</td>
+                      <td className="border px-4 py-2">{highlightText(lead.propertyAddress)}</td>
+                      <td className="border px-4 py-2">{lead.details}</td>
+                      <td className="border px-4 py-2">
+                        <select
+                          value={lead.propertyType}
+                          disabled
+                          className="border p-1 rounded w-full bg-gray-100 cursor-not-allowed"
+                        >
+                          <option value="">Select</option>
+                          <option value="Residential">Residential</option>
+                          <option value="Commercial">Commercial</option>
+                        </select>
+                      </td>
 
-                    <td className="border px-4 py-2">
-                      <input
-                        type="date"
-                        value={lead.bookingDate}
-                        readOnly
-                        className="border p-1 rounded w-full bg-gray-100 cursor-not-allowed"
-                      />
-                    </td>
+                      <td className="border px-4 py-2">
+                        <input
+                          type="date"
+                          value={lead.bookingDate}
+                          readOnly
+                          className="border p-1 rounded w-full bg-gray-100 cursor-not-allowed"
+                        />
+                      </td>
 
-                    <td className="border px-4 py-2">
-                      <input
-                        type="time"
-                        value={lead.bookingTime}
-                        readOnly
-                        className="border p-1 rounded w-full bg-gray-100 cursor-not-allowed"
-                      />
-                    </td>
+                      <td className="border px-4 py-2">
+                        <input
+                          type="time"
+                          value={lead.bookingTime}
+                          readOnly
+                          className="border p-1 rounded w-full bg-gray-100 cursor-not-allowed"
+                        />
+                      </td>
 
-                    <td className="border px-4 py-2">
-                      <select
-                        value={lead.bookingStatus}
-                        disabled
-                        className="bg-green-500 text-red-500 w-20 py-1 rounded opacity-980 cursor-not-allowed"
-                      >
-                        <option value="">Select</option>
-                        <option>Upcoming</option>
-                        <option>Not Responding</option>
-                        <option>Not Show</option>
-                        <option>Booked Somewhere Else</option>
-                        <option>Booked</option>
-                        <option>By Time Ascending</option>
-                        <option>By Time Descending</option>
-                        <option>Confirmed</option>
-                      </select>
-                    </td>
+                      <td className="border px-4 py-2">
+                        <select
+                          value={lead.bookingStatus}
+                          disabled
+                          className="bg-green-500 text-red-500 w-20 py-1 rounded opacity-980 cursor-not-allowed"
+                        >
+                          <option value="">Select</option>
+                          <option>Upcoming</option>
+                          <option>Not Responding</option>
+                          <option>Not Show</option>
+                          <option>Booked Somewhere Else</option>
+                          <option>Booked</option>
+                          <option>By Time Ascending</option>
+                          <option>By Time Descending</option>
+                          <option>Confirmed</option>
+                        </select>
+                      </td>
 
-                    <td className="border px-4 py-2">
-                      <input
-                        type="text"
-                        value={lead.bookingId}
-                        readOnly
-                        className="border p-1 rounded w-full bg-gray-100 cursor-not-allowed"
-                      />
-                    </td>
+                      <td className="border px-4 py-2">
+                        <input
+                          type="text"
+                          value={lead.bookingId}
+                          readOnly
+                          className="border p-1 rounded w-full bg-gray-100 cursor-not-allowed"
+                        />
+                      </td>
 
-                    <td className="border px-4 py-2 text-center">
-                      <button
-                        className="bg-[#295A47] text-white px-3 py-1 rounded"
-                        onClick={() => handleRemarkClick(lead.id)}
-                      >
-                        Remark
-                      </button>
-                    </td>
-                  </>
+                      <td className="border px-4 py-2 text-center">
+                        <button
+                          className="bg-[#295A47] text-white px-3 py-1 rounded"
+                          onClick={() => handleRemarkClick(lead.id)}
+                        >
+                          Remark
+                        </button>
+                      </td>
+                    </>
 
-                )}
+                  )}
 
                 </tr>
               ))
@@ -1108,7 +1150,7 @@ const LeadsTab = () => {
           </tbody>
         </table>
       </div>
-      
+
       <RemarkModal
         isOpen={isPopupOpen}
         remarks={

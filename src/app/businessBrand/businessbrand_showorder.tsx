@@ -294,22 +294,22 @@ const BusinessBrandShowOrder = () => {
       group.o_id.toLowerCase().includes(filterOrderId.toLowerCase());
     const matchesDeliveryDate = onlyShowNotSetDelivery
       ? group.products.some(
-          (order) => order.delivery_date === null || order.delivery_date === ""
-        )
+        (order) => order.delivery_date === null || order.delivery_date === ""
+      )
       : filterDeliveryDate === "" ||
-        group.products.some(
-          (order) =>
-            order.delivery_date &&
-            new Date(order.delivery_date).toISOString().split("T")[0] ===
-              filterDeliveryDate
-        );
+      group.products.some(
+        (order) =>
+          order.delivery_date &&
+          new Date(order.delivery_date).toISOString().split("T")[0] ===
+          filterDeliveryDate
+      );
     const matchesBilledDate =
       filterBilledDate === "" ||
       group.products.some(
         (order) =>
           order.billed_date &&
           new Date(order.billed_date).toISOString().split("T")[0] ===
-            filterBilledDate
+          filterBilledDate
       );
     const matchesAgentId =
       filterAgentId === "" ||
@@ -460,10 +460,10 @@ const BusinessBrandShowOrder = () => {
           prevOrders.map((order) =>
             order.o_id === o_id
               ? {
-                  ...order,
-                  company_total_payment: totalPayment,
-                  company_due: totalPayment,
-                }
+                ...order,
+                company_total_payment: totalPayment,
+                company_due: totalPayment,
+              }
               : order
           )
         );
@@ -484,7 +484,7 @@ const BusinessBrandShowOrder = () => {
     setProductImages([]);
     setImageModalTitle(status === "Product Issue" ? "Defect Images" : "Product Images");
     try {
-      const apiUrl = status === "Product Issue" 
+      const apiUrl = status === "Product Issue"
         ? `/api/sales-admin/defective-product-images?order_id=${orderId}`
         : `/api/businessBrand/product-images?order_id=${orderId}`;
 
@@ -542,6 +542,7 @@ const BusinessBrandShowOrder = () => {
   };
 
   const generateInvoice = (group: any) => {
+    const isCompositeGST = Number(manufacturer?.composite_gst_scheme) === 1;
     const doc = new jsPDF();
 
     // =====================
@@ -609,7 +610,7 @@ const BusinessBrandShowOrder = () => {
     //   .replace(/[-: ]/g, "")}`;
     const invoiceNumber = `INV-M${group.o_id}`;
 
-    const invoiceDate = new Date().toLocaleString();
+    const invoiceDate = new Date().toLocaleString("en-IN");
 
     doc.setFontSize(10);
     doc.setTextColor(0);
@@ -657,10 +658,9 @@ const BusinessBrandShowOrder = () => {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     doc.text(
-      `GSTIN: ${
-        group.client_gstin && group.client_gstin.trim()
-          ? group.client_gstin
-          : "N/A"
+      `GSTIN: ${group.client_gstin && group.client_gstin.trim()
+        ? group.client_gstin
+        : "N/A"
       }`,
       rightX,
       76
@@ -671,27 +671,18 @@ const BusinessBrandShowOrder = () => {
       rightX,
       84
     );
-    const siteAddressText = `Site Address: ${
-      group.site_address && group.site_address.trim()
+    const siteAddressText = `Site Address: ${group.site_address && group.site_address.trim()
         ? group.site_address
         : "N/A"
-    }`;
+      }`;
     const siteAddressLines = doc.splitTextToSize(siteAddressText, 80); // 80 is approximate width for right side
     doc.text(siteAddressLines, rightX, 92);
     // =====================
     // PRODUCT TABLE
     // =====================
-    const tableColumns = [
-      "S.No",
-      "Product",
-      "Category",
-      "Qty",
-      "Product Cost",
-      "GST",
-      "Unit Price",
-      "Transport Exclude",
-      "Total",
-    ];
+    const tableColumns = isCompositeGST
+      ? ["S.No", "Product", "Category", "Qty", "Unit Price", "Transport Exclude", "Total"]
+      : ["S.No", "Product", "Category", "Qty", "Product Cost", "GST", "Unit Price", "Transport Exclude", "Total"];
 
     const tableRows = group.products.map((item: any, index: number) => {
       const productDetail = productDetails.find(
@@ -715,9 +706,16 @@ const BusinessBrandShowOrder = () => {
         if (productDetail) {
           const mrp = Number(productDetail.mrp) || 0;
           const gstAmountCalc = Number(productDetail.gst_amount) || 0;
-          const transportationCost =
-            Number(productDetail.transportation_cost) || 0;
-          return mrp + gstAmountCalc + transportationCost;
+          const transportationCost = Number(productDetail.transportation_cost) || 0;
+
+          if (isCompositeGST) {
+            // composite dealers don't collect GST separately regardless of gst_exclude
+            return mrp + transportationCost;
+          }
+
+          return productDetail.gst_exclude === 0
+            ? mrp + transportationCost                       // GST already inside mrp
+            : mrp + gstAmountCalc + transportationCost;       // GST needs to be added
         }
         const mrp = Number(item.product_mrp) || 0;
         const gstAmountCalc = Number(item.gst_amount) || 0;
@@ -726,17 +724,28 @@ const BusinessBrandShowOrder = () => {
       })();
       const itemTotal =
         unitPrice * item.quantity + (Number(item.transport_exclude) || 0);
-      return [
-        index + 1,
-        item.product_name,
-        item.category,
-        item.quantity,
-        formatCurrency(productCost).replace("₹", "Rs. "),
-        formatCurrency(gstAmount).replace("₹", "Rs. "),
-        formatCurrency(unitPrice).replace("₹", "Rs. "),
-        `Rs. ${Number(item.transport_exclude || 0).toLocaleString()}`,
-        `Rs. ${itemTotal.toLocaleString()}`,
-      ];
+
+      return isCompositeGST
+        ? [
+          index + 1,
+          item.product_name,
+          item.category,
+          item.quantity,
+          formatCurrency(unitPrice).replace("₹", "Rs. "),
+          `Rs. ${Number(item.transport_exclude || 0).toLocaleString()}`,
+          `Rs. ${itemTotal.toLocaleString()}`,
+        ]
+        : [
+          index + 1,
+          item.product_name,
+          item.category,
+          item.quantity,
+          formatCurrency(productCost).replace("₹", "Rs. "),
+          formatCurrency(gstAmount).replace("₹", "Rs. "),
+          formatCurrency(unitPrice).replace("₹", "Rs. "),
+          `Rs. ${Number(item.transport_exclude || 0).toLocaleString()}`,
+          `Rs. ${itemTotal.toLocaleString()}`,
+        ];
     });
 
     autoTable(doc, {
@@ -801,18 +810,9 @@ const BusinessBrandShowOrder = () => {
     autoTable(doc, {
       head: [["Description", "Amount"]],
       body: [
-        [
-          "Total Product Cost",
-          `Rs. ${totalProductCost.toLocaleString()}`,
-        ],
-        [
-          "Total GST",
-          `Rs. ${totalGST.toLocaleString()}`,
-        ],
-        [
-          "Extra Transportation Cost",
-          `Rs. ${(Number(group.extra_trsnsport_cost) || 0).toLocaleString()}`,
-        ],
+        ["Total Product Cost", `Rs. ${totalProductCost.toLocaleString()}`],
+        ...(!isCompositeGST ? [["Total GST", `Rs. ${totalGST.toLocaleString()}`]] : []),
+        ["Extra Transportation Cost", `Rs. ${(Number(group.extra_trsnsport_cost) || 0).toLocaleString()}`],
         ["Final Cost", `Rs. ${group.company_total_payment.toLocaleString()}`],
         ["Paid", `Rs. ${(group.company_paid || 0).toLocaleString()}`],
         ["Due", `Rs. ${(group.company_due || 0).toLocaleString()}`],
@@ -849,12 +849,32 @@ const BusinessBrandShowOrder = () => {
       { align: "center" }
     );
 
-    doc.text(
-      `Generated on ${new Date().toLocaleString()}`,
-      PAGE_WIDTH / 2,
-      finalY + 16,
-      { align: "center" }
-    );
+    // Declaration for composite GST scheme dealers (mandatory)
+    if (isCompositeGST) {
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(180, 0, 0); // dark red to highlight
+      doc.text(
+        "Declaration: Composition taxable person, not eligible to collect tax on supplies",
+        PAGE_WIDTH / 2,
+        finalY + 18,
+        { align: "center" }
+      );
+      doc.setTextColor(0);
+      doc.setFont("helvetica", "normal");
+      doc.text(
+        `Generated on ${new Date().toLocaleString("en-IN")}`,
+        PAGE_WIDTH / 2,
+        finalY + 28,
+        { align: "center" }
+      );
+    } else {
+      doc.text(
+        `Generated on ${new Date().toLocaleString("en-IN")}`,
+        PAGE_WIDTH / 2,
+        finalY + 16,
+        { align: "center" }
+      );
+    }
 
     // Save the PDF
     doc.save(`Invoice_${invoiceNumber}.pdf`);
@@ -1203,7 +1223,7 @@ const BusinessBrandShowOrder = () => {
                               handleApprovePayment(
                                 group.o_id,
                                 group.groupTotal +
-                                  (Number(group.extra_trsnsport_cost) || 0)
+                                (Number(group.extra_trsnsport_cost) || 0)
                               )
                             }
                             className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded shadow-sm transition-colors text-sm flex items-center gap-2 w-full justify-center lg:w-auto"
@@ -1420,7 +1440,7 @@ const BusinessBrandShowOrder = () => {
                                     }
                                     return formatCurrency(
                                       unitPrice * order.quantity +
-                                        (Number(order.transport_exclude) || 0)
+                                      (Number(order.transport_exclude) || 0)
                                     );
                                   })()}
                                 </span>

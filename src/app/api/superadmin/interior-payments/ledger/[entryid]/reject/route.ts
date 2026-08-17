@@ -28,17 +28,17 @@ export async function POST(
     let entryType = '';
     let existing: any[] = [];
 
-    // Check charges
-    [existing] = await executeQuery(`SELECT id, status FROM interior_billing_charges WHERE id = ?`, [entryIdNum]);
+    // Check payments
+    [existing] = await executeQuery(`SELECT id, status FROM interior_payment_transactions WHERE id = ?`, [entryIdNum]);
     if ((existing as any[]).length > 0) {
-      tableName = 'interior_billing_charges';
-      entryType = 'charge';
+      tableName = 'interior_payment_transactions';
+      entryType = 'payment';
     } else {
-      // Check payments
-      [existing] = await executeQuery(`SELECT id, status FROM interior_payment_transactions WHERE id = ?`, [entryIdNum]);
+      // Check charges
+      [existing] = await executeQuery(`SELECT id, status FROM interior_billing_charges WHERE id = ?`, [entryIdNum]);
       if ((existing as any[]).length > 0) {
-        tableName = 'interior_payment_transactions';
-        entryType = 'payment';
+        tableName = 'interior_billing_charges';
+        entryType = 'charge';
       } else {
         // Check adjustments
         [existing] = await executeQuery(`SELECT id, status FROM interior_adjustments WHERE id = ?`, [entryIdNum]);
@@ -58,7 +58,7 @@ export async function POST(
     // Update status to declined
     await executeQuery(`
       UPDATE ${tableName}
-      SET status = 'declined', updated_at = CURRENT_TIMESTAMP
+      SET status = 'rejected', updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `, [entryIdNum]);
 

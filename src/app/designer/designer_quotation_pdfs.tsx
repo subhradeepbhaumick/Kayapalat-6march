@@ -35,10 +35,12 @@ const DesignerQuotationPdfsTab: React.FC = () => {
       const response = await fetch('/api/clients', { credentials: 'include' });
       if (response.ok) {
         const data = await response.json();
-        setClients(data);
+        // Handle both direct array responses or objects containing a clients array
+        setClients(Array.isArray(data) ? data : (data.clients || []));
       }
     } catch (error) {
       console.error('Error fetching clients:', error);
+      setClients([]);
     }
   };
 
@@ -50,7 +52,7 @@ const DesignerQuotationPdfsTab: React.FC = () => {
       const response = await fetch(url, { credentials: 'include' });
       if (response.ok) {
         const data = await response.json();
-        setQuotationPdfs(data.quotationPdfs);
+        setQuotationPdfs(data.quotationPdfs || []);
       } else {
         const data = await response.json();
         toast.error(data.error || 'Failed to fetch quotation PDFs');
@@ -107,9 +109,9 @@ const DesignerQuotationPdfsTab: React.FC = () => {
               onChange={(e) => setFilterClient(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg"
             >
-              <option value="">All clients</option>
-              {clients.map(client => (
-                <option key={client.user_id} value={client.user_id}>
+              <option key="default-all" value="">All clients</option>
+              {clients.map((client, index) => (
+                <option key={client.user_id || `client-${index}`} value={client.user_id}>
                   {client.name} ({client.email})
                 </option>
               ))}

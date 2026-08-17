@@ -23,8 +23,8 @@ export async function GET(request: NextRequest) {
     });
 
     const [rows] = await connection.execute(`
-      SELECT space_type, client_name, advance, booking_cost,due, time_period, transaction_proof, booking_status, booking_date, expire_date
-      FROM \`showroom a\`
+      SELECT space_type,size, price, dealer_id, client_name, advance, booking_cost,due, time_period,special_discount,discounted_price,deal_price, transaction_proof, booking_status, booking_date, expire_date,invoice_id
+      FROM \`showroom_a\`
       WHERE dealer_id = ?
       ORDER BY booking_date DESC
     `, [dealerId]);
@@ -33,15 +33,22 @@ export async function GET(request: NextRequest) {
 
     const bookings = (rows as any[]).map(row => ({
       space_type: row.space_type,
+      size: row.size,
+      price: Number(row.price),
+      dealer_id: row.dealer_id,
       client_name: row.client_name,
       advance: Number(row.advance),
       booking_cost: Number(row.booking_cost),
       due: Number(row.due),
       time_period: Number(row.time_period),
+      special_discount: Number(row.special_discount),
+      discounted_price: Number(row.discounted_price),
+      deal_price: Number(row.deal_price),
       transaction_proof: row.transaction_proof,
       booking_status: row.booking_status,
       booking_date: row.booking_date,
       expire_date: row.expire_date,
+      invoice_id: row.invoice_id,
     }));
 
     return NextResponse.json(bookings);

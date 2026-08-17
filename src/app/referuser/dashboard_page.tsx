@@ -26,6 +26,7 @@ import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import SalesPage from "./sales_page";
+import SalesCommissionPage from "./sales_page_commission";
 import ClientProfile from "./settings_client_profile";
 import BankDetails from "./settings_bank_details";
 import HelpSupport from "./settings_help&support";
@@ -178,7 +179,8 @@ const ReferUserDashboard = () => {
   const sidebarItems = [
     { icon: LayoutDashboard, label: "Dashboard", key: "Dashboard" },
     { icon: Bell, label: "Notifications", key: "Notifications" },
-    { icon: TrendingUp, label: "Sales", key: "Sales" },
+    { icon: TrendingUp, label: "Lead for Sales", key: "Sales" },
+    { icon: TrendingUp, label: "Lead for Commission", key: "Sales Commission" },
     { icon: FileText, label: "My Invoices", key: "My Invoices" },
     { icon: BarChart3, label: "Business Analytics", key: "Business Analytics" },
     // { icon: Shield, label: 'Service-Level Agreement', key: 'Service-Level Agreement' },
@@ -667,6 +669,7 @@ const ReferUserDashboard = () => {
               )}
 
               {activeTab === "Sales" && <SalesPage agentId={user.id} />}
+              {activeTab === "Sales Commission" && (<SalesCommissionPage agentId={user.id} />)}
 
               {activeTab === "My Invoices" && (
                 <>

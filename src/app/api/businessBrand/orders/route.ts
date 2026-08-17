@@ -116,6 +116,7 @@ export async function GET(request: NextRequest) {
         phone,
         whatsapp,
         email,
+        composite_gst_scheme,
         company_name,
         owner_name,
         address,

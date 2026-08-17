@@ -48,6 +48,7 @@ export async function GET(req: NextRequest) {
         account_number,
         ifsc_code,
         upi_id,
+        qr_code, 
         created_at,
         updated_at
       FROM manufacturer

@@ -21,6 +21,7 @@ import {
   Activity,
   PlusCircle,
 } from "lucide-react";
+import { toast } from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSession } from "next-auth/react";
@@ -527,6 +528,37 @@ const ProjectModal = ({
   const [materials, setMaterials] = useState<any[]>([]);
   const [labourOptions, setLabourOptions] = useState<any[]>([]);
   const [selectedLabourId, setSelectedLabourId] = useState<string>("");
+  const handleDeleteExpense = async (exp: any) => {
+  const confirmDelete = confirm(
+    "Are you sure you want to delete this expense?"
+  );
+
+  if (!confirmDelete) return;
+
+  try {
+    const response = await fetch(
+      `/api/supervisor/delete-supervisor-expense?id=${exp.id}&appointment_id=${exp.appointment_id}&labour_id=${exp.labour_id}`,
+      {
+        method: "DELETE",
+      }
+    );
+
+    const data = await response.json();
+
+    if (response.ok) {
+      toast.success("Expense deleted successfully");
+
+      setExpenses((prev: any) =>
+        prev.filter((item: any) => item.id !== exp.id)
+      );
+    } else {
+      toast.error(data.error || "Failed to delete");
+    }
+  } catch (error) {
+    console.error(error);
+    toast.error("Something went wrong");
+  }
+};
   const fetchOrder = async () => {
     if (!orderId) {
       alert("Enter Order ID");
@@ -1302,6 +1334,9 @@ const ProjectModal = ({
                           Status
                         </th>
                         <th className="p-4 text-sm font-semibold text-gray-600">
+                          Total Present
+                        </th>
+                        <th className="p-4 text-sm font-semibold text-gray-600">
                           Updated At
                         </th>
                       </tr>
@@ -1351,6 +1386,7 @@ const ProjectModal = ({
                                 </button>
                               )}
                             </td>
+                            <td className="p-4 text-sm text-gray-600">{worker.total_present} days</td>
                             <td className="p-4 text-sm text-gray-600">
                               {worker.updated_at
                                 ? new Date(
@@ -1444,16 +1480,18 @@ const ProjectModal = ({
                     expenses.map((exp: any) => (
                       <div
                         key={exp.id}
-                        className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border border-gray-200 rounded-xl hover:shadow-sm gap-2"
+                        className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border border-gray-200 rounded-xl hover:shadow-sm gap-3"
                       >
                         <div className="flex items-center gap-4">
                           <div className="p-2 bg-gray-100 rounded-lg text-gray-600">
                             <FileText size={20} />
                           </div>
+
                           <div>
                             <p className="font-medium text-gray-800">
                               {exp.title} ({exp.quantity} × ₹{exp.per_amount})
                             </p>
+
                             <p className="text-xs text-gray-500">
                               Added on{" "}
                               <span className="font-semibold text-red-500">
@@ -1468,9 +1506,19 @@ const ProjectModal = ({
                             </p>
                           </div>
                         </div>
-                        <span className="font-bold text-gray-800">
-                          ₹{Number(exp.total_amount).toLocaleString()}
-                        </span>
+
+                        <div className="flex items-center gap-3">
+                          <span className="font-bold text-gray-800">
+                            ₹{Number(exp.total_amount).toLocaleString()}
+                          </span>
+
+                          <button
+                            onClick={() => handleDeleteExpense(exp)}
+                            className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg text-sm transition"
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </div>
                     ))
                   )}

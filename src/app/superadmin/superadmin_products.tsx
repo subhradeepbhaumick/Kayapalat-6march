@@ -18,6 +18,7 @@ import {
   Check,
   Edit,
   Tag,
+  MessageCircle,
 } from "lucide-react";
 import { getSession } from "next-auth/react";
 import type { Session } from "next-auth";
@@ -27,7 +28,7 @@ import { autoTable } from "jspdf-autotable";
 import CartModal from "./cart";
 import { Product } from "@/types/product";
 import { CartItem } from "@/types/cart";
-
+import BusinessBrandKayapalatChatModal from "../businessBrand/BusinessBrandKayapalatChatModal";
 interface OrderItem {
   order_id: string;
   product_id: number;
@@ -69,6 +70,7 @@ const ProductsTab = () => {
   const [selectedCompany, setSelectedCompany] = useState<string>("ALL");
   const [selectedAgent, setSelectedAgent] = useState<string>("ALL");
   const [showBuyModal, setShowBuyModal] = useState(false);
+  const [chatModalOpen, setChatModalOpen] = useState(false);
   const [buyFormData, setBuyFormData] = useState({
     agentId: "",
     clientName: "",
@@ -337,10 +339,10 @@ const ProductsTab = () => {
         prev.map((ci) =>
           ci.order_id === item.order_id
             ? {
-                ...ci,
-                quantity: newQuantity,
-                calculatedPrice: newCalculatedPrice,
-              }
+              ...ci,
+              quantity: newQuantity,
+              calculatedPrice: newCalculatedPrice,
+            }
             : ci
         )
       );
@@ -380,10 +382,10 @@ const ProductsTab = () => {
           prev.map((ci) =>
             ci.order_id === item.order_id
               ? {
-                  ...ci,
-                  quantity: newQuantity,
-                  calculatedPrice: newCalculatedPrice,
-                }
+                ...ci,
+                quantity: newQuantity,
+                calculatedPrice: newCalculatedPrice,
+              }
               : ci
           )
         );
@@ -1210,11 +1212,10 @@ const ProductsTab = () => {
               )}
               <div className="absolute top-2 right-2 flex flex-col space-y-1">
                 <span
-                  className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    product.is_active
-                      ? "bg-green-100 text-green-800"
-                      : "bg-red-100 text-red-800"
-                  }`}
+                  className={`px-2 py-1 rounded-full text-xs font-medium ${product.is_active
+                    ? "bg-green-100 text-green-800"
+                    : "bg-red-100 text-red-800"
+                    }`}
                 >
                   {product.is_active ? "In Stock" : "Out Of Stock"}
                 </span>
@@ -1320,7 +1321,7 @@ const ProductsTab = () => {
                 <div className="space-y-4">
                   <div className="relative h-64 sm:h-96 bg-gray-100 rounded-lg overflow-hidden">
                     {selectedProduct.images &&
-                    selectedProduct.images.length > 0 ? (
+                      selectedProduct.images.length > 0 ? (
                       <>
                         <img
                           src={
@@ -1358,11 +1359,10 @@ const ProductsTab = () => {
                             <button
                               key={image.image_id}
                               onClick={() => setCurrentImageIndex(index)}
-                              className={`flex-shrink-0 w-12 h-12 sm:w-16 sm:h-16 rounded-lg overflow-hidden border-2 ${
-                                currentImageIndex === index
-                                  ? "border-[#295A47]"
-                                  : "border-gray-200"
-                              }`}
+                              className={`flex-shrink-0 w-12 h-12 sm:w-16 sm:h-16 rounded-lg overflow-hidden border-2 ${currentImageIndex === index
+                                ? "border-[#295A47]"
+                                : "border-gray-200"
+                                }`}
                             >
                               <img
                                 src={image.image_url}
@@ -1391,11 +1391,10 @@ const ProductsTab = () => {
                         {selectedProduct.category}
                       </span>
                       <span
-                        className={`px-3 py-1 rounded-full text-sm font-medium ${
-                          selectedProduct.is_active
-                            ? "bg-green-100 text-green-800"
-                            : "bg-red-100 text-red-800"
-                        }`}
+                        className={`px-3 py-1 rounded-full text-sm font-medium ${selectedProduct.is_active
+                          ? "bg-green-100 text-green-800"
+                          : "bg-red-100 text-red-800"
+                          }`}
                       >
                         {selectedProduct.is_active
                           ? "In Stock"
@@ -1442,7 +1441,91 @@ const ProductsTab = () => {
                       </div>
                     </div>
                   </div>
-
+                  {/* SHOWROOM STOCK */}
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+                      <h3 className="font-semibold text-[#295A47] flex items-center">
+                        <Package className="w-4 h-4 mr-2" />
+                        Showroom Stock
+                      </h3>
+                      <button
+                        onClick={() => setChatModalOpen(true)}
+                        className="bg-[#295A47] hover:bg-[#1f4637] text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition w-full sm:w-auto"
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                        Chat With Dealer
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* SHOWROOM STOCK */}
+                      <div className="bg-white border border-gray-200 rounded-lg p-4">
+                        <p className="text-sm text-gray-500 mb-2">
+                          Showroom Stock Number
+                        </p>
+                        <input
+                          type="number"
+                          value={selectedProduct.showroom_stock_number || ""}
+                          onChange={(e) => {
+                            setSelectedProduct({
+                              ...selectedProduct,
+                              showroom_stock_number: e.target.value,
+                            });
+                          }}
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#295A47] focus:outline-none"
+                          placeholder="Enter showroom stock"
+                        />
+                      </div>
+                      {/* DEFECT STOCK */}
+                      <div className="bg-white border border-gray-200 rounded-lg p-4">
+                        <p className="text-sm text-gray-500 mb-2">
+                          Defect Stock Number
+                        </p>
+                        <input
+                          type="number"
+                          value={selectedProduct.defect_stock || ""}
+                          onChange={(e) => {
+                            setSelectedProduct({
+                              ...selectedProduct,
+                              defect_stock: e.target.value,
+                            });
+                          }}
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-red-500 focus:outline-none"
+                          placeholder="Enter defect stock"
+                        />
+                      </div>
+                    </div>
+                    {/* SAVE BUTTON */}
+                    <button
+                      onClick={async () => {
+                        try {
+                          const response = await fetch("/api/sales-admin/products", {
+                            method: "PUT",
+                            headers: {
+                              "Content-Type": "application/json",
+                            },
+                            body: JSON.stringify({
+                              product_id: selectedProduct.product_id,
+                              showroom_stock_number:
+                                selectedProduct.showroom_stock_number,
+                              defect_stock: selectedProduct.defect_stock,
+                            }),
+                          });
+                          const data = await response.json();
+                          if (response.ok) {
+                            toast.success("Stock updated successfully");
+                          } else {
+                            toast.error(data.error || "Failed to update stock");
+                          }
+                        } catch (error) {
+                          console.error(error);
+                          toast.error("Something went wrong");
+                        }
+                      }}
+                      className="mt-4 w-full bg-[#295A47] hover:bg-[#1f4637] text-white py-3 rounded-lg transition font-medium"
+                    >
+                      Save Stock Details
+                    </button>
+                  </div>
                   {/* Pricing */}
                   <div className="bg-gray-50 rounded-lg p-4">
                     <h3 className="font-semibold text-[#295A47] mb-3 flex items-center">
@@ -1576,13 +1659,13 @@ const ProductsTab = () => {
                             <div className="flex items-center gap-2">
                               {Number((selectedProduct as any).sell_mrp) >
                                 0 && (
-                                <span className="text-red-500 line-through text-sm">
-                                  ₹
-                                  {Number(
-                                    (selectedProduct as any).sell_mrp
-                                  ).toLocaleString()}
-                                </span>
-                              )}
+                                  <span className="text-red-500 line-through text-sm">
+                                    ₹
+                                    {Number(
+                                      (selectedProduct as any).sell_mrp
+                                    ).toLocaleString()}
+                                  </span>
+                                )}
                               <span className="text-xl font-bold text-green-600">
                                 ₹
                                 {(() => {
@@ -1596,7 +1679,7 @@ const ProductsTab = () => {
                                   const productCost =
                                     100 + gstPercentage !== 0
                                       ? (finalProductCost * 100) /
-                                        (100 + gstPercentage)
+                                      (100 + gstPercentage)
                                       : 0;
 
                                   const discountAmount =
@@ -1962,11 +2045,10 @@ const ProductsTab = () => {
                 <div className="flex items-center justify-between w-full sm:w-auto sm:justify-start space-x-3">
                   <div className="text-sm font-medium text-gray-700">GST</div>
                   <div
-                    className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      editFormData.gstIncluded
-                        ? "bg-green-100 text-green-800"
-                        : "bg-orange-100 text-orange-800"
-                    }`}
+                    className={`px-3 py-1 rounded-full text-xs font-medium ${editFormData.gstIncluded
+                      ? "bg-green-100 text-green-800"
+                      : "bg-orange-100 text-orange-800"
+                      }`}
                   >
                     {editFormData.gstIncluded ? "Included" : "Excluded"}
                   </div>
@@ -1979,26 +2061,23 @@ const ProductsTab = () => {
                       gstIncluded: !editFormData.gstIncluded,
                     })
                   }
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                    editFormData.gstIncluded ? "bg-green-600" : "bg-orange-600"
-                  }`}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${editFormData.gstIncluded ? "bg-green-600" : "bg-orange-600"
+                    }`}
                 >
                   <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      editFormData.gstIncluded
-                        ? "translate-x-6"
-                        : "translate-x-1"
-                    }`}
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${editFormData.gstIncluded
+                      ? "translate-x-6"
+                      : "translate-x-1"
+                      }`}
                   />
                 </button>
               </div>
 
               <div
-                className={`ml-0 sm:ml-4 p-3 rounded-lg border mt-3 sm:mt-0 ${
-                  editFormData.gstIncluded
-                    ? "bg-green-50 border-green-200"
-                    : "bg-red-50 border-red-200"
-                }`}
+                className={`ml-0 sm:ml-4 p-3 rounded-lg border mt-3 sm:mt-0 ${editFormData.gstIncluded
+                  ? "bg-green-50 border-green-200"
+                  : "bg-red-50 border-red-200"
+                  }`}
               >
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   GST Percentage (%)
@@ -2015,11 +2094,10 @@ const ProductsTab = () => {
                   }
                   placeholder="18"
                   disabled={editFormData.gstIncluded}
-                  className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#295A47] focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:m-0 [&::-webkit-inner-spin-button]:m-0 [&::-webkit-outer-spin-button]:-webkit-appearance-none [&::-webkit-inner-spin-button]:-webkit-appearance-none [&::-moz-appearance]:textfield [&::-webkit-outer-spin-button]:hidden [&::-webkit-inner-spin-button]:hidden [&::-webkit-outer-spin-button]:invisible [&::-webkit-inner-spin-button]:invisible ${
-                    editFormData.gstIncluded
-                      ? "bg-gray-100 cursor-not-allowed"
-                      : ""
-                  }`}
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#295A47] focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:m-0 [&::-webkit-inner-spin-button]:m-0 [&::-webkit-outer-spin-button]:-webkit-appearance-none [&::-webkit-inner-spin-button]:-webkit-appearance-none [&::-moz-appearance]:textfield [&::-webkit-outer-spin-button]:hidden [&::-webkit-inner-spin-button]:hidden [&::-webkit-outer-spin-button]:invisible [&::-webkit-inner-spin-button]:invisible ${editFormData.gstIncluded
+                    ? "bg-gray-100 cursor-not-allowed"
+                    : ""
+                    }`}
                 />
                 <div className="mt-3">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -2033,12 +2111,12 @@ const ProductsTab = () => {
                       type="text"
                       value={(editFormData.gstIncluded
                         ? (((parseFloat(editFormData.mrp) || 0) * 100) /
-                            (100 +
-                              (parseFloat(editFormData.gstPercentage) || 0))) *
-                          ((parseFloat(editFormData.gstPercentage) || 0) / 100)
+                          (100 +
+                            (parseFloat(editFormData.gstPercentage) || 0))) *
+                        ((parseFloat(editFormData.gstPercentage) || 0) / 100)
                         : ((parseFloat(editFormData.mrp) || 0) *
-                            (parseFloat(editFormData.gstPercentage) || 0)) /
-                          100
+                          (parseFloat(editFormData.gstPercentage) || 0)) /
+                        100
                       ).toFixed(2)}
                       disabled
                       className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
@@ -2054,11 +2132,10 @@ const ProductsTab = () => {
                     Transportation Cost
                   </div>
                   <div
-                    className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      editFormData.transportationIncluded
-                        ? "bg-green-100 text-green-800"
-                        : "bg-orange-100 text-orange-800"
-                    }`}
+                    className={`px-3 py-1 rounded-full text-xs font-medium ${editFormData.transportationIncluded
+                      ? "bg-green-100 text-green-800"
+                      : "bg-orange-100 text-orange-800"
+                      }`}
                   >
                     {editFormData.transportationIncluded
                       ? "Included"
@@ -2074,18 +2151,16 @@ const ProductsTab = () => {
                         !editFormData.transportationIncluded,
                     })
                   }
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                    editFormData.transportationIncluded
-                      ? "bg-green-600"
-                      : "bg-orange-600"
-                  }`}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${editFormData.transportationIncluded
+                    ? "bg-green-600"
+                    : "bg-orange-600"
+                    }`}
                 >
                   <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      editFormData.transportationIncluded
-                        ? "translate-x-6"
-                        : "translate-x-1"
-                    }`}
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${editFormData.transportationIncluded
+                      ? "translate-x-6"
+                      : "translate-x-1"
+                      }`}
                   />
                 </button>
               </div>
@@ -2106,18 +2181,16 @@ const ProductsTab = () => {
                               !editFormData.discussTransportationLater,
                           })
                         }
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                          editFormData.discussTransportationLater
-                            ? "bg-green-600"
-                            : "bg-orange-600"
-                        }`}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${editFormData.discussTransportationLater
+                          ? "bg-green-600"
+                          : "bg-orange-600"
+                          }`}
                       >
                         <span
-                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                            editFormData.discussTransportationLater
-                              ? "translate-x-6"
-                              : "translate-x-1"
-                          }`}
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${editFormData.discussTransportationLater
+                            ? "translate-x-6"
+                            : "translate-x-1"
+                            }`}
                         />
                       </button>
                     </div>
@@ -2174,15 +2247,15 @@ const ProductsTab = () => {
                       {editFormData.gstIncluded
                         ? parseFloat(editFormData.mrp || "0").toFixed(2)
                         : (
-                            parseFloat(editFormData.mrp || "0") +
-                            ((parseFloat(editFormData.mrp) || 0) *
-                              (parseFloat(editFormData.gstPercentage) || 0)) /
-                              100 +
-                            (!editFormData.transportationIncluded &&
+                          parseFloat(editFormData.mrp || "0") +
+                          ((parseFloat(editFormData.mrp) || 0) *
+                            (parseFloat(editFormData.gstPercentage) || 0)) /
+                          100 +
+                          (!editFormData.transportationIncluded &&
                             !editFormData.discussTransportationLater
-                              ? parseFloat(editFormData.transportationCost) || 0
-                              : 0)
-                          ).toFixed(2)}
+                            ? parseFloat(editFormData.transportationCost) || 0
+                            : 0)
+                        ).toFixed(2)}
                     </div>
                   </div>
                   <div className="w-full sm:w-auto text-right flex justify-between sm:block items-center mt-2 sm:mt-0">
@@ -2243,6 +2316,14 @@ const ProductsTab = () => {
             </button>
           </div>
         </div>
+      )}
+      {/* Kayapalat Chat Modal */}
+      {selectedProduct && (
+        <BusinessBrandKayapalatChatModal
+          isOpen={chatModalOpen}
+          onClose={() => setChatModalOpen(false)}
+          productId={selectedProduct.product_id}
+        />
       )}
     </div>
   );

@@ -1,111 +1,33 @@
-// import { executeQuery } from '@/lib/db';
-// import { NextRequest, NextResponse } from 'next/server';
-// import bcrypt from 'bcryptjs';
-// import { sendEmail } from '@/helpers/mailer';
-
-// interface User {
-//   user_id: number;
-//   name: string;
-//   email: string;
-//   phone: string;
-//   whatsapp: string | null;
-//   password_hash: string;
-//   occupation: string | null;
-//   address: string | null;
-//   role: string;
-// }
-// export async function POST(req: NextRequest) {
-//   try {
-//     console.log("Starting signup process...");
-//     const reqBody = await req.json();
-//     console.log("Request body received:", reqBody);
-
-//     const { first_name, last_name, email, password, phone, address, message } = reqBody;
-
-//     // ✅ Check if all required fields are provided
-//     if (!first_name || !email || !password || !phone) {
-//       console.log("Missing required fields");
-//       return NextResponse.json(
-//         { error: "⚠️ All fields are required" },
-//         { status: 400 }
-//       );
-//     }
-
-//     console.log("Checking if user exists...");
-//     const [existingUsers] = await executeQuery<User>(
-//       'SELECT * FROM users WHERE email = ? AND deleted_at IS NULL',
-//       [email]
-//     );
-
-//     if (existingUsers && existingUsers.length > 0) {
-//       console.log("User already exists");
-//       return NextResponse.json(
-//         { error: "❗️ User already exists" },
-//         { status: 400 }
-//       );
-//     }
-
-//     console.log("Hashing password...");
-//     const salt = await bcrypt.genSalt(10);
-//     const hashedPassword = await bcrypt.hash(password, salt);
-
-//     console.log("Creating new user...");
-//     const query = `INSERT INTO users 
-//       (type, first_name, last_name, email, password, phone, address, message, created_at, updated_at) 
-//       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`;
-    
-//     const params = ['owner', first_name, last_name, email, hashedPassword, phone, address, message];
-    
-//     console.log("Executing query:", query);
-//     console.log("With parameters:", params);
-
-//     const [_, result] = await executeQuery(
-//       query,
-//       params
-//     );
-
-//     const userId = result.insertId;
-//     console.log("User saved with ID:", userId);
-
-//     console.log("Sending verification email...");
-//     await sendEmail({
-//       email, emailType: 'VERIFY', userId,
-//       to: '',
-//       subject: ''
-//     });
-
-//     return NextResponse.json(
-//       {
-//         message: "🎉 User Registered Successfully!",
-//         success: true,
-//         userId,
-//       },
-//       { status: 201 }
-//     );
-//   } catch (error: any) {
-//     console.error("Detailed error:", {
-//       message: error.message,
-//       stack: error.stack,
-//       code: error.code,
-//       errno: error.errno,
-//       sqlState: error.sqlState,
-//       sqlMessage: error.sqlMessage
-//     });
-//     return NextResponse.json(
-//       { error: error.message || "Internal Server Error" },
-//       { status: 500 }
-//     );
-//   }
-// }
 import { executeQuery } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 // import { sendEmail } from '@/helpers/mailer';
 
 // Generate next user_id based on role
+// async function generateUserId(prefix: string) {
+//   const query = `
+//     SELECT user_id 
+//     FROM users_kp_db
+//     WHERE user_id LIKE '${prefix}%'
+//     ORDER BY user_id DESC
+//     LIMIT 1
+//   `;
+
+//   const [rows] = await executeQuery(query);
+
+//   if (rows.length === 0) {
+//     return prefix + "001";
+//   }
+
+//   const lastId = rows[0].user_id; // Example: R015
+//   const lastNumber = parseInt(lastId.substring(1)); // → 15
+//   const nextNumber = (lastNumber + 1).toString().padStart(3, "0");
+
+//   return prefix + nextNumber; // → R016
+// }
 async function generateUserId(prefix: string) {
   const query = `
-    SELECT user_id 
+    SELECT user_id
     FROM users_kp_db
     WHERE user_id LIKE '${prefix}%'
     ORDER BY user_id DESC
@@ -118,13 +40,17 @@ async function generateUserId(prefix: string) {
     return prefix + "001";
   }
 
-  const lastId = rows[0].user_id; // Example: R015
-  const lastNumber = parseInt(lastId.substring(1)); // → 15
-  const nextNumber = (lastNumber + 1).toString().padStart(3, "0");
+  const lastId = rows[0].user_id;
 
-  return prefix + nextNumber; // → R016
+  // Works for R001, C001, MC001, etc.
+  const lastNumber = parseInt(lastId.substring(prefix.length));
+
+  const nextNumber = (lastNumber + 1)
+    .toString()
+    .padStart(3, "0");
+
+  return prefix + nextNumber;
 }
-
 export async function POST(req: NextRequest) {
   try {
     const reqBody = await req.json();
@@ -152,7 +78,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Block signup for special accounts
-    if (['superadmin', 'sales_admin', 'designer'].includes(role)) {
+    if (['superadmin', 'sales_admin'].includes(role)) {
       return NextResponse.json(
         { error: "❌ You are not allowed to signup. Contact SuperAdmin." },
         { status: 403 }
@@ -210,13 +136,22 @@ export async function POST(req: NextRequest) {
 
     let prefix = "";
 
-    if (role === "referuser") prefix = "R";
-    if (role === "client") prefix = "C";
-    if (role === "designer") prefix = "D";
-    if (role === "sales_admin") prefix = "S";
-    if (role === "superadmin") prefix = "O";
-    if (role === "businessBrand") prefix = "B";
-
+    // if (role === "referuser") prefix = "R";
+    // if (role === "client") prefix = "C";
+    // if (role === "designer") prefix = "D";
+    // if (role === "sales_admin") prefix = "S";
+    // if (role === "superadmin") prefix = "O";
+    // if (role === "businessBrand") prefix = "B";
+    // if (role === "vendor") prefix = "V";
+    // if (role === "metro_client") prefix = "MC";
+if (role === "referuser") prefix = "R";
+else if (role === "client") prefix = "C";
+else if (role === "designer") prefix = "D";
+else if (role === "sales_admin") prefix = "S";
+else if (role === "superadmin") prefix = "O";
+else if (role === "businessBrand") prefix = "B";
+else if (role === "vendor") prefix = "V";
+else if (role === "metro_client") prefix = "MC";
 
     const user_id = await generateUserId(prefix);
 

@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     // Auth Check
     // --------------------------------------------------
     const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
-    if (!token || !token.user_id || (token.role !== 'sales_admin' && token.role !== 'superadmin' && token.role !== 'referuser')) {
+    if (!token || !token.user_id || (token.role !== 'sales_admin' && token.role !== 'superadmin' && token.role !== 'referuser' && token.role !== 'client' && token.role !== 'metro_client' && token.role !== 'metro_client')) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -24,9 +24,12 @@ export async function GET(request: NextRequest) {
     if (isAgent) {
       // Filter by agent_id
       query = `
-        SELECT p.*, a.agent_name as agent_name
+        SELECT p.*,l.lead_type, a.agent_name as agent_name
         FROM projects p
-        LEFT JOIN agents a ON p.agent_id = a.agent_id
+        LEFT JOIN leads l
+          ON p.lead_id = l.lead_id
+        LEFT JOIN agents a 
+          ON p.agent_id = a.agent_id
         WHERE p.agent_id = ?
         ORDER BY p.appointment_id DESC
       `;
@@ -34,9 +37,12 @@ export async function GET(request: NextRequest) {
     } else {
       // Filter by admin_id
       query = `
-        SELECT p.*, a.agent_name as agent_name
+        SELECT p.*, l.lead_type, a.agent_name as agent_name
         FROM projects p
-        LEFT JOIN agents a ON p.agent_id = a.agent_id
+        LEFT JOIN leads l
+          ON p.lead_id = l.lead_id
+        LEFT JOIN agents a 
+          ON p.agent_id = a.agent_id
         WHERE p.admin_id = ?
         ORDER BY p.appointment_id DESC
       `;
@@ -58,7 +64,7 @@ export async function PUT(request: NextRequest) {
     // Auth Check
     // --------------------------------------------------
     const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
-    if (!token || !token.user_id || (token.role !== 'sales_admin' && token.role !== 'superadmin')) {
+    if (!token || !token.user_id || (token.role !== 'sales_admin' && token.role !== 'superadmin' && token.role !== 'metro_client')) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

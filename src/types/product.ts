@@ -16,6 +16,7 @@ export interface Product {
   transport_exclude: number;
   base_mrp: number;
   final_product_cost: number;
+  showroom_stock?: number;
   is_active: number;
   created_at: string;
   updated_at: string;
@@ -32,4 +33,7 @@ export interface Product {
     is_primary: boolean;
     sort_order: number;
   }>;
+  composite_gst_scheme?: number;
+  showroom_stock_number: string;
+defect_stock: string;
 }

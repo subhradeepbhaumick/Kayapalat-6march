@@ -1,7 +1,18 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { X, Building, Phone, Mail, MapPin, FileText, CreditCard, Hash, User, Building2 } from "lucide-react";
+import {
+  X,
+  Building,
+  Phone,
+  Mail,
+  MapPin,
+  FileText,
+  CreditCard,
+  Hash,
+  User,
+  Building2,
+} from "lucide-react";
 
 interface ManufacturerDetails {
   dealer_id: string;
@@ -21,6 +32,7 @@ interface ManufacturerDetails {
   account_number: string;
   ifsc_code: string;
   upi_id: string;
+  qr_code: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -30,16 +42,24 @@ interface ManufacturerDetailsModalProps {
   onClose: () => void;
 }
 
-const ManufacturerDetailsModal: React.FC<ManufacturerDetailsModalProps> = ({ dealerId, onClose }) => {
-  const [manufacturer, setManufacturer] = useState<ManufacturerDetails | null>(null);
+const ManufacturerDetailsModal: React.FC<ManufacturerDetailsModalProps> = ({
+  dealerId,
+  onClose,
+}) => {
+  const [manufacturer, setManufacturer] = useState<ManufacturerDetails | null>(
+    null
+  );
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchManufacturerDetails = async () => {
       try {
-        const response = await fetch(`/api/superadmin/manufacturer?dealer_id=${dealerId}`, {
-          credentials: "include",
-        });
+        const response = await fetch(
+          `/api/superadmin/manufacturer?dealer_id=${dealerId}`,
+          {
+            credentials: "include",
+          }
+        );
 
         if (response.ok) {
           const data = await response.json();
@@ -74,7 +94,9 @@ const ManufacturerDetailsModal: React.FC<ManufacturerDetailsModalProps> = ({ dea
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
         <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full p-8 border border-gray-200">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-red-600">Manufacturer Not Found</h2>
+            <h2 className="text-2xl font-bold text-red-600">
+              Manufacturer Not Found
+            </h2>
             <button
               onClick={onClose}
               className="text-gray-500 hover:text-gray-700 transition-colors"
@@ -82,7 +104,9 @@ const ManufacturerDetailsModal: React.FC<ManufacturerDetailsModalProps> = ({ dea
               <X className="w-6 h-6" />
             </button>
           </div>
-          <p className="text-gray-600">No manufacturer details found for dealer ID: {dealerId}</p>
+          <p className="text-gray-600">
+            No manufacturer details found for dealer ID: {dealerId}
+          </p>
         </div>
       </div>
     );
@@ -113,38 +137,58 @@ const ManufacturerDetailsModal: React.FC<ManufacturerDetailsModalProps> = ({ dea
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Dealer ID</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Dealer ID
+                  </label>
                   <div className="flex items-center p-3 bg-white border border-gray-300 rounded-lg">
                     <Hash className="w-4 h-4 text-gray-400 mr-2" />
-                    <span className="text-gray-900">{manufacturer.dealer_id}</span>
+                    <span className="text-gray-900">
+                      {manufacturer.dealer_id}
+                    </span>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">User Name</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    User Name
+                  </label>
                   <div className="flex items-center p-3 bg-white border border-gray-300 rounded-lg">
                     <User className="w-4 h-4 text-gray-400 mr-2" />
-                    <span className="text-gray-900">{manufacturer.user_name || 'N/A'}</span>
+                    <span className="text-gray-900">
+                      {manufacturer.user_name || "N/A"}
+                    </span>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Phone
+                  </label>
                   <div className="flex items-center p-3 bg-white border border-gray-300 rounded-lg">
                     <Phone className="w-4 h-4 text-gray-400 mr-2" />
-                    <span className="text-gray-900">{manufacturer.phone || 'N/A'}</span>
+                    <span className="text-gray-900">
+                      {manufacturer.phone || "N/A"}
+                    </span>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">WhatsApp</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    WhatsApp
+                  </label>
                   <div className="flex items-center p-3 bg-white border border-gray-300 rounded-lg">
                     <Phone className="w-4 h-4 text-gray-400 mr-2" />
-                    <span className="text-gray-900">{manufacturer.whatsapp || 'N/A'}</span>
+                    <span className="text-gray-900">
+                      {manufacturer.whatsapp || "N/A"}
+                    </span>
                   </div>
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Email
+                  </label>
                   <div className="flex items-center p-3 bg-white border border-gray-300 rounded-lg">
                     <Mail className="w-4 h-4 text-gray-400 mr-2" />
-                    <span className="text-gray-900">{manufacturer.email || 'N/A'}</span>
+                    <span className="text-gray-900">
+                      {manufacturer.email || "N/A"}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -158,24 +202,36 @@ const ManufacturerDetailsModal: React.FC<ManufacturerDetailsModalProps> = ({ dea
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Company Name</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Company Name
+                  </label>
                   <div className="flex items-center p-3 bg-white border border-gray-300 rounded-lg">
                     <Building2 className="w-4 h-4 text-gray-400 mr-2" />
-                    <span className="text-gray-900">{manufacturer.company_name || 'N/A'}</span>
+                    <span className="text-gray-900">
+                      {manufacturer.company_name || "N/A"}
+                    </span>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Owner Name</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Owner Name
+                  </label>
                   <div className="flex items-center p-3 bg-white border border-gray-300 rounded-lg">
                     <User className="w-4 h-4 text-gray-400 mr-2" />
-                    <span className="text-gray-900">{manufacturer.owner_name || 'N/A'}</span>
+                    <span className="text-gray-900">
+                      {manufacturer.owner_name || "N/A"}
+                    </span>
                   </div>
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Address</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Address
+                  </label>
                   <div className="flex items-start p-3 bg-white border border-gray-300 rounded-lg">
                     <MapPin className="w-4 h-4 text-gray-400 mr-2 mt-1" />
-                    <span className="text-gray-900">{manufacturer.address || 'N/A'}</span>
+                    <span className="text-gray-900">
+                      {manufacturer.address || "N/A"}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -189,24 +245,36 @@ const ManufacturerDetailsModal: React.FC<ManufacturerDetailsModalProps> = ({ dea
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">GSTIN</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    GSTIN
+                  </label>
                   <div className="flex items-center p-3 bg-white border border-gray-300 rounded-lg">
                     <FileText className="w-4 h-4 text-gray-400 mr-2" />
-                    <span className="text-gray-900">{manufacturer.gstin || 'N/A'}</span>
+                    <span className="text-gray-900">
+                      {manufacturer.gstin || "N/A"}
+                    </span>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">PAN</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    PAN
+                  </label>
                   <div className="flex items-center p-3 bg-white border border-gray-300 rounded-lg">
                     <CreditCard className="w-4 h-4 text-gray-400 mr-2" />
-                    <span className="text-gray-900">{manufacturer.pan || 'N/A'}</span>
+                    <span className="text-gray-900">
+                      {manufacturer.pan || "N/A"}
+                    </span>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">TAN</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    TAN
+                  </label>
                   <div className="flex items-center p-3 bg-white border border-gray-300 rounded-lg">
                     <FileText className="w-4 h-4 text-gray-400 mr-2" />
-                    <span className="text-gray-900">{manufacturer.tan || 'N/A'}</span>
+                    <span className="text-gray-900">
+                      {manufacturer.tan || "N/A"}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -220,44 +288,81 @@ const ManufacturerDetailsModal: React.FC<ManufacturerDetailsModalProps> = ({ dea
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Account Holder Name</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Account Holder Name
+                  </label>
                   <div className="flex items-center p-3 bg-white border border-gray-300 rounded-lg">
                     <User className="w-4 h-4 text-gray-400 mr-2" />
-                    <span className="text-gray-900">{manufacturer.account_holder || 'N/A'}</span>
+                    <span className="text-gray-900">
+                      {manufacturer.account_holder || "N/A"}
+                    </span>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Bank Name</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Bank Name
+                  </label>
                   <div className="flex items-center p-3 bg-white border border-gray-300 rounded-lg">
                     <Building className="w-4 h-4 text-gray-400 mr-2" />
-                    <span className="text-gray-900">{manufacturer.bank_name || 'N/A'}</span>
+                    <span className="text-gray-900">
+                      {manufacturer.bank_name || "N/A"}
+                    </span>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Account Number</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Account Number
+                  </label>
                   <div className="flex items-center p-3 bg-white border border-gray-300 rounded-lg">
                     <Hash className="w-4 h-4 text-gray-400 mr-2" />
-                    <span className="text-gray-900">{manufacturer.account_number || 'N/A'}</span>
+                    <span className="text-gray-900">
+                      {manufacturer.account_number || "N/A"}
+                    </span>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">IFSC Code</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    IFSC Code
+                  </label>
                   <div className="flex items-center p-3 bg-white border border-gray-300 rounded-lg">
                     <FileText className="w-4 h-4 text-gray-400 mr-2" />
-                    <span className="text-gray-900">{manufacturer.ifsc_code || 'N/A'}</span>
+                    <span className="text-gray-900">
+                      {manufacturer.ifsc_code || "N/A"}
+                    </span>
                   </div>
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">UPI ID</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    UPI ID
+                  </label>
                   <div className="flex items-center p-3 bg-white border border-gray-300 rounded-lg">
                     <Mail className="w-4 h-4 text-gray-400 mr-2" />
-                    <span className="text-gray-900">{manufacturer.upi_id || 'N/A'}</span>
+                    <span className="text-gray-900">
+                      {manufacturer.upi_id || "N/A"}
+                    </span>
+                  </div>
+                </div>
+                {/* QR Code */}
+                <div className="bg-gray-50 rounded-lg p-6">
+                  <h3 className="text-xl font-semibold text-[#295A47] mb-4 flex items-center">
+                    <CreditCard className="w-5 h-5 mr-2" />
+                    UPI QR Code
+                  </h3>
+
+                  <div className="flex justify-center">
+                    {manufacturer.qr_code ? (
+                      <img
+                        src={manufacturer.qr_code}
+                        alt="QR Code"
+                        className="w-40 h-40 object-contain border rounded-lg shadow-sm"
+                      />
+                    ) : (
+                      <p className="text-gray-500">No QR Code Available</p>
+                    )}
                   </div>
                 </div>
               </div>
             </div>
-
-
           </div>
         </div>
       </div>

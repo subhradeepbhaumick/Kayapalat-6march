@@ -1,5 +1,4 @@
 // "use client";
-
 // import { useState, useEffect, useRef } from "react";
 // import Link from "next/link";
 // import Image from "next/image";
@@ -9,7 +8,6 @@
 // import { toast } from "react-hot-toast";
 // import { motion, AnimatePresence } from "framer-motion";
 // import { useAuth } from "@/contexts/AuthContext";
-
 // export default function Navbar() {
 //   const router = useRouter();
 //   const pathname = usePathname();
@@ -21,36 +19,29 @@
 //   const [isVisible, setIsVisible] = useState(true);
 //   const lastScrollY = useRef(0);
 //   const dropdownRef = useRef<HTMLDivElement>(null);
-
 //   useEffect(() => {
 //     setIsClient(true);
 //   }, []);
-
 //   useEffect(() => {
 //     const controlNavbar = () => {
 //       const currentScrollY = window.scrollY;
-      
 //       if (currentScrollY < lastScrollY.current || currentScrollY < 100) {
 //         setIsVisible(true);
 //       } else {
 //         setIsVisible(false);
 //       }
-      
 //       lastScrollY.current = currentScrollY;
 //     };
-
 //     window.addEventListener('scroll', controlNavbar);
 //     return () => {
 //       window.removeEventListener('scroll', controlNavbar);
 //     };
 //   }, []);
-
 //   const handleLogout = async () => {
 //     try {
 //       const response = await fetch('/api/auth/logout', {
 //         method: 'POST',
 //       });
-      
 //       if (response.ok) {
 //         logout();            // clear client auth state
 //         toast.success('Logged out successfully');
@@ -65,14 +56,12 @@
 //       toast.error('Logout failed');
 //     }
 //   };
-
 //   const [citiesTimeout, setCitiesTimeout] = useState<NodeJS.Timeout | null>(null);
 //   const dropdownVariants = {
 //     hidden: { opacity: 0, y: -10 },
 //     visible: { opacity: 1, y: 0, transition: { duration: 0.2, ease: "easeOut" } },
 //     exit: { opacity: 0, y: -10, transition: { duration: 0.15 } },
 //   };
-
 //   // Close dropdown on outside click
 //   useEffect(() => {
 //     if (!dropdownOpen) return;
@@ -84,11 +73,8 @@
 //     document.addEventListener("mousedown", handleClickOutside);
 //     return () => document.removeEventListener("mousedown", handleClickOutside);
 //   }, [dropdownOpen]);
-
 //   if (!isClient) return null;
-
 //   const isReferUserPage = pathname.startsWith("/referuser");
-
 //   return (
 //     <nav
 //       className={`fixed top-0 w-full bg-[#D7E7D0] shadow-md px-4 py-2 flex items-center justify-between z-50 h-14 transition-transform duration-300 ease-out ${
@@ -115,7 +101,6 @@
 //           />
 //         </Link>
 //       </div>
-
 //       {/* Center Navigation */}
 //       <ul className="hidden lg:flex gap-5 text-gray-700 font-medium text-sm">
 //         <li className="relative group">
@@ -133,7 +118,6 @@
 //             ></span>
 //           </Link>
 //         </li>
-
 //         {/* Cities Hover Dropdown */}
 //         {/* <li
 //           className="relative group"
@@ -151,7 +135,6 @@
 //           <button className="transition cursor-pointer hover:text-[#295A47] flex items-center gap-1">
 //             Cities ▾
 //           </button>
-
 //           <AnimatePresence>
 //             {citiesOpen && (
 //               <motion.ul
@@ -175,8 +158,6 @@
 //             )}
 //           </AnimatePresence>
 //         </li> */}
-
-
 //         {/* Other Links */}
 //         {[
 //           "Gallery",
@@ -209,7 +190,6 @@
 //           );
 //         })}
 //       </ul>
-
 //       {/* Right Section */}
 //       <div className="flex gap-2 relative">
 //         {isAuthenticated ? (
@@ -265,7 +245,6 @@
 //           </>
 //         )}
 //       </div>
-
 //       {/* Sidebar */}
 //       <AnimatePresence>
 //         {sidebarOpen && !isReferUserPage && (
@@ -303,7 +282,6 @@
 //                     <span className="absolute left-3 bottom-1 h-[1px] w-0 bg-[#D7E7D0]/80 transition-all duration-300 group-hover:w-[90%]"></span>
 //                   </Link>
 //                 </li>
-
 //                 {/* Cities Dropdown in Sidebar */}
 //                 {/* <li className="border-b border-white/50 pb-1">
 //                   <button
@@ -335,7 +313,6 @@
 //                     </ul>
 //                   )}
 //                 </li> */}
-
 //                 {/* Sidebar Links */}
 //                 {[
 //                   "Gallery",
@@ -379,7 +356,6 @@
 //   );
 // }
 "use client";
-
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -388,7 +364,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSession, signOut } from "next-auth/react";
-
 export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
@@ -403,11 +378,9 @@ export default function Navbar() {
   const lastScrollY = useRef(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [citiesTimeout, setCitiesTimeout] = useState<NodeJS.Timeout | null>(null);
-
   useEffect(() => {
     setIsClient(true);
   }, []);
-
   useEffect(() => {
     const controlNavbar = () => {
       const currentScrollY = window.scrollY;
@@ -421,7 +394,6 @@ export default function Navbar() {
     window.addEventListener("scroll", controlNavbar);
     return () => window.removeEventListener("scroll", controlNavbar);
   }, []);
-
   useEffect(() => {
     if (!dropdownOpen) return;
     const handleClickOutside = (event: MouseEvent) => {
@@ -432,7 +404,6 @@ export default function Navbar() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [dropdownOpen]);
-
   const handleLogout = async () => {
     try {
       await signOut({ callbackUrl: "/" });
@@ -442,7 +413,6 @@ export default function Navbar() {
       toast.error("Logout failed");
     }
   };
-
   // -----------------------------
   // HELPER: Get dashboard path based on role
   const getDashboardPath = (role: string | undefined) => {
@@ -464,27 +434,39 @@ export default function Navbar() {
         return "/supervisor";
       case "businessBrand":
         return "/businessBrand";
+      case "metro-superadmin":
+        return "/metro-superadmin";
+      case "metro":
+        return "/metro";
+      case "it":
+        return "/developer";
+      case "relationship_manager":
+        return "/relationship-manager";
+      case "casual_staff":
+        return "/casual-staff";
+      case "showroom_staff":
+        return "/showroom-staff";
+      case "vendor":
+        return "/vendor";
+      case "metro_client":
+        return "/metro_management-client";
+
       default:
         return "/";
     }
   };
   // -----------------------------
-
   const dropdownVariants = {
     hidden: { opacity: 0, y: -10 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.2, ease: "easeOut" } },
     exit: { opacity: 0, y: -10, transition: { duration: 0.15 } },
   };
-
   if (!isClient) return null;
-
   const isReferUserPage = pathname.startsWith("/referuser");
-
   return (
     <nav
-      className={`fixed top-0 w-full bg-[#D7E7D0] shadow-md px-4 py-2 flex items-center justify-between z-50 h-14 transition-transform duration-300 ease-out ${
-        isVisible ? "translate-y-0" : "-translate-y-full"
-      }`}
+      className={`fixed top-0 w-full bg-[#D7E7D0] shadow-md px-4 py-2 flex items-center justify-between z-50 h-14 transition-transform duration-300 ease-out ${isVisible ? "translate-y-0" : "-translate-y-full"
+        }`}
     >
       {/* Logo and Sidebar Button */}
       <div className="flex items-center gap-3">
@@ -506,25 +488,21 @@ export default function Navbar() {
           />
         </Link>
       </div>
-
       {/* Center Navigation */}
       <ul className="hidden lg:flex gap-5 text-gray-700 font-medium text-sm">
         <li className="relative group">
           <Link
             href="/about"
-            className={`transition ${
-              pathname === "/about" ? "text-[#295A47]" : "hover:text-[#295A47]"
-            }`}
+            className={`transition ${pathname === "/about" ? "text-[#295A47]" : "hover:text-[#295A47]"
+              }`}
           >
             About
             <span
-              className={`absolute left-0 bottom-0 h-[1px] bg-[#295A47]/80 transition-all duration-300 ${
-                pathname === "/about" ? "w-full" : "w-0 group-hover:w-full"
-              }`}
+              className={`absolute left-0 bottom-0 h-[1px] bg-[#295A47]/80 transition-all duration-300 ${pathname === "/about" ? "w-full" : "w-0 group-hover:w-full"
+                }`}
             ></span>
           </Link>
         </li>
-
         {/* Other Links */}
         {[
           "Gallery",
@@ -544,16 +522,14 @@ export default function Navbar() {
               >
                 {name}
                 <span
-                  className={`absolute left-0 bottom-0 h-[1px] bg-[#295A47]/80 transition-all duration-300 ${
-                    isActive ? "w-full" : "w-0 group-hover:w-full"
-                  }`}
+                  className={`absolute left-0 bottom-0 h-[1px] bg-[#295A47]/80 transition-all duration-300 ${isActive ? "w-full" : "w-0 group-hover:w-full"
+                    }`}
                 ></span>
               </Link>
             </li>
           );
         })}
       </ul>
-
       {/* Right Section */}
       <div className="flex gap-2 relative">
         {isAuthenticated && user ? (
@@ -564,7 +540,6 @@ export default function Navbar() {
             >
               <User size={20} className="text-white" />
             </button>
-
             {dropdownOpen && (
               <div className="absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-md text-sm py-1 border border-gray-200">
                 {/* <Link 
@@ -575,7 +550,6 @@ export default function Navbar() {
                   <UserCircle size={16} />
                   Profile
                 </Link>*/}
-
                 <Link
                   href={getDashboardPath(user?.role)}
                   className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-[#295A47]/10 hover:text-[#295A47] cursor-pointer transition-all duration-200 hover:scale-105"
@@ -584,7 +558,6 @@ export default function Navbar() {
                   <LayoutDashboard size={16} />
                   Dashboard
                 </Link>
-
                 <button
                   onClick={() => {
                     setDropdownOpen(false);
@@ -615,7 +588,6 @@ export default function Navbar() {
           </>
         )}
       </div>
-
       {/* Sidebar */}
       <AnimatePresence>
         {sidebarOpen && !isReferUserPage && (
@@ -653,7 +625,6 @@ export default function Navbar() {
                     <span className="absolute left-3 bottom-1 h-[1px] w-0 bg-[#D7E7D0]/80 transition-all duration-300 group-hover:w-[90%]"></span>
                   </Link>
                 </li>
-
                 {/* Sidebar Links */}
                 {[
                   "Gallery",
@@ -668,9 +639,8 @@ export default function Navbar() {
                   return (
                     <li
                       key={index}
-                      className={`border-b border-white/50 pb-1 relative group ${
-                        isActive ? "text-[#D7E7D0]" : ""
-                      }`}
+                      className={`border-b border-white/50 pb-1 relative group ${isActive ? "text-[#D7E7D0]" : ""
+                        }`}
                     >
                       <Link
                         href={linkPath}

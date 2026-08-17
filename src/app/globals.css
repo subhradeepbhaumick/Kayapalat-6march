@@ -4,7 +4,6 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
 :root {
   --background: #D2EBD0;
   --foreground: #171717;
@@ -14,11 +13,9 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
-
 body::-webkit-scrollbar {
   display: none;
 }
-
 @keyframes glitter {
   0%{
     opacity: 1;
@@ -33,18 +30,15 @@ body::-webkit-scrollbar {
     transform: scale(1) rotate(360deg);
   }
 }
-
 .custom-select-arrow {
   background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23000' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
   background-position: right 0.5rem center;
   background-repeat: no-repeat;
   background-size: 1.5em 1.5em;
 }
-
 .glitter {
   animation: glitter 1s infinite ease-in-out;
 }
-
 /* --- Custom Horizontal Scrollbar --- */
 .horizontal-scrollbar::-webkit-scrollbar {
   height: 6px;
@@ -60,26 +54,19 @@ body::-webkit-scrollbar {
 .horizontal-scrollbar::-webkit-scrollbar-thumb:hover {
   @apply bg-[#00261a];
 }
-
 body {
-  
   background: var(--background);
   color: var(--foreground);
-  
 }
-
 /* --- CUSTOM PROSE STYLES --- */
-
 /* For Links */
 .prose a {
   @apply text-[#00423D] font-bold underline hover:text-[#00261a];
 }
-
 /* For Inline Code */
 .prose code {
   @apply bg-gray-100 text-gray-800 font-mono text-sm px-1.5 py-0.5 rounded-sm border border-[#00423D];
 }
-
 /* For Blockquotes */
 .prose blockquote {
   @apply border-l-4 border-[#00423D] bg-gray-50 text-gray-700 italic px-4 py-2 my-4;
@@ -88,26 +75,22 @@ body {
 .prose blockquote p:last-of-type::after {
   content: none;
 }
-
 /* FIX: Reset margins on paragraphs inside list items for alignment */
 .prose ul li > p,
 .prose ol li > p {
     margin: 0 !important;
 }
-
 /* Regular unordered lists */
 .prose ul:not([data-type="taskList"]) {
   list-style: none !important;
   padding-left: 1.5rem !important;
   margin: 1rem 0 !important;
 }
-
 .prose ul:not([data-type="taskList"]) > li {
   position: relative !important;
   margin: 0.5rem 0 !important;
   padding-left: 0.5rem !important; /* Added padding to create space for the bullet */
 }
-
 .prose ul:not([data-type="taskList"]) > li::before {
   content: "•" !important;
   position: absolute !important;
@@ -117,7 +100,6 @@ body {
   font-weight: bold !important;
   font-size: 1.25em; /* Make bullet more visible */
 }
-
 /* Regular ordered lists */
 .prose ol {
   list-style: none !important;
@@ -125,14 +107,12 @@ body {
   margin: 1rem 0 !important;
   counter-reset: item !important;
 }
-
 .prose ol > li {
   position: relative !important;
   margin: 0.5rem 0 !important;
   counter-increment: item !important;
   padding-left: 0.5rem !important; /* Added padding to create space for the number */
 }
-
 .prose ol > li::before {
   content: counter(item, decimal) "." !important;
   position: absolute !important;
@@ -144,15 +124,12 @@ body {
   text-align: right; /* Align numbers to the right */
   margin-right: 0.3rem;
 }
-
-
 /* Task Lists */
 .prose ul[data-type="taskList"] {
   list-style: none !important;
   padding-left: 0 !important;
   margin: 1rem 0 !important;
 }
-
 /* FIX: Make the entire task item non-interactive */
 .prose ul[data-type="taskList"] > li[data-type="taskItem"] {
   display: flex !important;
@@ -160,11 +137,9 @@ body {
   margin: 0.5rem 0 !important;
   pointer-events: none !important; /* Disable clicks on the whole item */
 }
-
 .prose ul[data-type="taskList"] > li[data-type="taskItem"]::before {
   display: none !important;
 }
-
 .prose ul[data-type="taskList"] > li[data-type="taskItem"] > label {
   display: flex !important;
   align-items: center !important;
@@ -172,25 +147,20 @@ body {
   margin-top: 0.25rem !important; /* Adjusted for better alignment */
   cursor: default !important;
 }
-
 .prose ul[data-type="taskList"] > li[data-type="taskItem"] > label > input[type="checkbox"] {
   cursor: default !important;
   margin: 0 !important;
 }
-
 /* FIX: Allow text selection in the content part of the task item */
 .prose ul[data-type="taskList"] > li[data-type="taskItem"] > div {
   flex: 1 !important;
   pointer-events: auto !important; /* Re-enable pointer events for the text only */
 }
-
 /* Completed task styling */
 .prose ul[data-type="taskList"] > li[data-type="taskItem"][data-checked="true"] > div p {
   text-decoration: line-through !important;
   color: rgb(107 114 128) !important;
 }
-
-
 /* For Headings */
 .prose h1 {
   @apply text-4xl font-bold mt-8 mb-4 text-[#00423D];
@@ -209,4 +179,22 @@ body {
 }
 .prose h6 {
   @apply text-base font-bold mt-2 mb-1;
+}
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+.marquee-container {
+  overflow: hidden;
+  white-space: nowrap;
+  width: 100%;
+}
+.marquee-content {
+  display: inline-flex;
+  align-items: center;
+  animation: marquee 30s linear infinite;
 }

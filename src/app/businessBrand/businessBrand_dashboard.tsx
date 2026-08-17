@@ -35,6 +35,8 @@ import BusinessBrandMyListing from "./businessbrand_mylisting";
 import BusinessBrandOrders from "./businessbrand_showorder";
 import BusinessBrandBookMySpace from "./businessbrand_bookmyspace";
 import BusinessBrandLocation from "./businessbrand_location";
+import BusinessBrandRules from "./businessbrand_rules";
+
 
 const BusinessBrandDashboard = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -197,6 +199,7 @@ const BusinessBrandDashboard = () => {
     { icon: LucideShoppingBasket, label: "My Orders", key: "My Orders" },
     { icon: BookLock, label: "Book My Space", key: "Book My Space" },
     { icon: FaSearchLocation, label: "Location", key: "Location" },
+    { icon: Settings, label: "Rules & Support", key: "Rules" },
   ];
 
   const handleOnboardingComplete = async () => {
@@ -516,6 +519,7 @@ const BusinessBrandDashboard = () => {
                 {activeTab === "My Orders" && <BusinessBrandOrders />}
                 {activeTab === "Book My Space" && <BusinessBrandBookMySpace />}
                 {activeTab === "Location" && <BusinessBrandLocation />}
+                {activeTab === "Rules" && <BusinessBrandRules />}
               </div>
             </div>
           </div>

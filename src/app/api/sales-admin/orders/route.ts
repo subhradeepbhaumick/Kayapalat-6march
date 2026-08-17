@@ -29,6 +29,7 @@ export async function GET(req: NextRequest) {
              m.phone,
              m.whatsapp,
              m.address,
+             m.composite_gst_scheme,
              bp2.client_name,
              bp2.client_gstin,
              bp2.client_phone,

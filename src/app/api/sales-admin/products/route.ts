@@ -61,11 +61,15 @@ export async function GET(req: NextRequest) {
         pd.base_mrp,
         pd.final_product_cost,
         pd.is_active,
+        pd.showroom_stock,
+        pd.showroom_stock_number,
+    pd.defect_stock,
         pd.created_at,
         pd.updated_at,
         m.owner_name as manufacturer_name,
         m.email as manufacturer_email,
         m.phone as manufacturer_phone,
+        m.composite_gst_scheme,
         m.company_name,
         m.address as manufacturer_address
       FROM product_details pd
@@ -142,6 +146,9 @@ export async function PUT(req: NextRequest) {
 
     const {
       product_id,
+      showroom_stock,
+      showroom_stock_number,
+      defect_stock,
       sell_mrp,
       mrp,
       commission_percentage,
@@ -166,7 +173,25 @@ export async function PUT(req: NextRequest) {
     // Build the update query dynamically for partial updates
     const updateFields: string[] = [];
     const values: any[] = [];
+    if (showroom_stock !== undefined && showroom_stock !== null) {
+      updateFields.push('showroom_stock = ?');
+      values.push(Number(showroom_stock));
+    }
+    if (
+  showroom_stock_number !== undefined &&
+  showroom_stock_number !== null
+) {
+  updateFields.push('showroom_stock_number = ?');
+  values.push(showroom_stock_number);
+}
 
+if (
+  defect_stock !== undefined &&
+  defect_stock !== null
+) {
+  updateFields.push('defect_stock = ?');
+  values.push(defect_stock);
+}
     if (mrp !== undefined && mrp !== null && mrp !== '') {
       updateFields.push('mrp = ?');
       values.push(Number(mrp));

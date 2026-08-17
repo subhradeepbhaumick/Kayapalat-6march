@@ -1,18 +1,23 @@
-# Labour Dropdown Implementation TODO
+# DisplayAgreementModal PDF Enhancement Task
 
-## Plan Progress
-- [x] Analyzed files and confirmed API endpoint
-- [x] Got user approval for plan
+## Current Status
+- [x] Analyzed DisplayAgreementModal.tsx
+- [x] Created detailed edit plan  
+- [x] Got user approval ✅
 
 ## Implementation Steps
-- [ ] 1. Update src/app/supervisor/supervisor_myprojects.tsx
-  - Add labourOptions state
-  - Add fetchLabourOptions function  
-  - Add selectedLabourId state
-  - Pass new props to ExpenseModal
-- [ ] 2. Update src/components/supervisor-modal/ExpenseModal.tsx
-  - Add new interface props
-  - Replace name input with dropdown for labour
-  - Add fetch logic and auto-set title
-- [ ] 3. Test dropdown loads data
-- [ ] 4. Test expense save with selected labour
+- [ ] **Step 1:** Create TODO.md (Current)
+- [ ] **Step 2:** Edit generatePDF function - Add decorative header "Display Agreement" (centered, 20pt, underline)
+- [ ] **Step 3:** Increase line spacing from 5mm → 8mm in addLine()
+- [ ] **Step 4:** Add court-style border/frame around main content
+- [ ] **Step 5:** Enhance section styling (underlines, 12pt bold)
+- [ ] **Step 6:** Add horizontal ruling lines between major sections
+- [ ] **Step 7:** Add professional footer (page numbers, signature lines)
+- [ ] **Step 8:** Add subtle "LEGAL AGREEMENT" watermark
+- [ ] **Step 9:** Update margins and title sizes for court paper feel
+- [ ] **Step 10:** Test PDF generation and complete task
+
+## Notes
+- NO LOGIC CHANGES - only visual/styling enhancements
+- Preserve all formData usage and text content exactly
+- Target: Professional legal/court document appearance

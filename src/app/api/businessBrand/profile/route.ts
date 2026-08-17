@@ -57,6 +57,8 @@ export async function GET(request: NextRequest) {
         account_number: manufacturer?.account_number || '',
         ifsc_code: manufacturer?.ifsc_code || '',
         upi_id: manufacturer?.upi_id || '',
+        qr_image: manufacturer?.qr_code || null,
+        composite_gst_scheme: manufacturer?.composite_gst_scheme || 0,
       }
     };
 
@@ -118,7 +120,7 @@ export async function PUT(request: NextRequest) {
     const accountNumber = formData.get('accountNumber') as string || '';
     const ifscCode = formData.get('ifscCode') as string || '';
     const upiId = formData.get('upiId') as string || '';
-
+    const isComposite = formData.get('isComposite') === 'true' ? 1 : 0;
     // Handle file upload
     let companyLogoPath = null;
     const companyLogoFile = formData.get('companyLogo') as File | null;
@@ -138,12 +140,57 @@ export async function PUT(request: NextRequest) {
 
       companyLogoPath = `/company_logo/${fileName}`;
     }
+// 🔹 Handle QR Code Upload
+let qrCodePath = null;
+const qrFile = formData.get('qrImage') as File | null;
 
+if (qrFile && qrFile.size > 0) {
+  const qrDir = path.join(process.cwd(), 'public/manufacturer_qrcode');
+  await fs.mkdir(qrDir, { recursive: true });
+
+  const ext = path.extname(qrFile.name);
+  const fileName = `${businessBrandId}_qr_${Date.now()}${ext}`;
+  const filePath = path.join(qrDir, fileName);
+
+  const buffer = Buffer.from(await qrFile.arrayBuffer());
+  await fs.writeFile(filePath, buffer);
+
+  qrCodePath = `/manufacturer_qrcode/${fileName}`;
+}
     // Check if manufacturer record exists
     const [existingManufacturer] = await executeQuery(`
-      SELECT dealer_id FROM manufacturer WHERE dealer_id = ?
+      SELECT dealer_id,bank_name, account_holder, account_number, ifsc_code, upi_id, composite_gst_scheme FROM manufacturer WHERE dealer_id = ?
     `, [businessBrandId]);
+    // 🔒 GST LOCK CHECK
+let isGstLocked = false;
 
+if (existingManufacturer.length > 0) {
+  const gstData = existingManufacturer[0];
+  isGstLocked = gstData.composite_gst_scheme === 1;
+}
+// 🔒 BANK LOCK CHECK
+let isBankLocked = false;
+
+if (existingManufacturer.length > 0) {
+  const bankData = existingManufacturer[0];
+
+  isBankLocked =
+    bankData.bank_name &&
+    bankData.account_number &&
+    bankData.ifsc_code;
+}
+// if (isBankLocked) {
+//   return NextResponse.json(
+//     { error: 'Bank details already saved. Cannot update again.' },
+//     { status: 403 }
+//   );
+// }
+if (isGstLocked && isComposite === 0) {
+  return NextResponse.json(
+    { error: 'Composite GST once enabled cannot be changed.' },
+    { status: 403 }
+  );
+}
     if (existingManufacturer.length > 0) {
       // Update existing record
       await executeQuery(`
@@ -155,21 +202,45 @@ export async function PUT(request: NextRequest) {
           tan = ?,
           owner_name = ?,
           phone = ?,
-          company_logo = ?,
-          bank_name = ?,
-          account_holder = ?,
-          account_number = ?,
-          ifsc_code = ?,
-          upi_id = ?,
+          composite_gst_scheme = ?,
+          company_logo = COALESCE(?, company_logo),
+          bank_name = CASE 
+  WHEN bank_name IS NULL OR bank_name = '' THEN ? 
+  ELSE bank_name 
+END,
+
+account_holder = CASE 
+  WHEN account_holder IS NULL OR account_holder = '' THEN ? 
+  ELSE account_holder 
+END,
+
+account_number = CASE 
+  WHEN account_number IS NULL OR account_number = '' THEN ? 
+  ELSE account_number 
+END,
+
+ifsc_code = CASE 
+  WHEN ifsc_code IS NULL OR ifsc_code = '' THEN ? 
+  ELSE ifsc_code 
+END,
+
+upi_id = CASE 
+  WHEN upi_id IS NULL OR upi_id = '' THEN ? 
+  ELSE upi_id 
+END,
+qr_code = CASE 
+      WHEN qr_code IS NULL OR qr_code = '' THEN ? 
+      ELSE qr_code 
+    END,
           updated_at = NOW()
         WHERE dealer_id = ?
-      `, [companyName, address, gstin, pan, tan, ownerName, phone, companyLogoPath, bankName, accountHolderName, accountNumber, ifscCode, upiId, businessBrandId]);
+      `, [companyName, address, gstin, pan, tan, ownerName, phone,isComposite, companyLogoPath, bankName, accountHolderName, accountNumber, ifscCode, upiId,qrCodePath, businessBrandId]);
     } else {
       // Insert new record with minimal required fields
       await executeQuery(`
-        INSERT INTO manufacturer (dealer_id, company_name, address, gstin, pan, tan, owner_name, phone, company_logo, bank_name, account_holder, account_number, ifsc_code, upi_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `, [businessBrandId, companyName, address, gstin, pan, tan, ownerName, phone, companyLogoPath, bankName, accountHolderName, accountNumber, ifscCode, upiId]);
+        INSERT INTO manufacturer (dealer_id, company_name, address, gstin, pan, tan, owner_name, phone,composite_gst_scheme, company_logo, bank_name, account_holder, account_number, ifsc_code, upi_id,qr_code)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [businessBrandId, companyName, address, gstin, pan, tan, ownerName, phone,isComposite, companyLogoPath, bankName, accountHolderName, accountNumber, ifscCode, upiId,qrCodePath]);
     }
 
     // Also update basic fields in users_kp_db if needed

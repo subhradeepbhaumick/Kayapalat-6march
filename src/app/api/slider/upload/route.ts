@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    const newFileName = `${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+    const newFileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
     const path = join(uploadDir, newFileName);
     
     await writeFile(path, buffer);

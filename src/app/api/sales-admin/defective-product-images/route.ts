@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
     // Auth Check
     const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
 
-    if (!token || !token.user_id || (token.role !== 'sales_admin' && token.role !== 'superadmin' && token.role !== 'businessBrand')) {
+    if (!token || !token.user_id || (token.role !== 'sales_admin' && token.role !== 'superadmin' && token.role !== 'supervisor' && token.role !== 'businessBrand')) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
     // Auth Check
     const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
 
-    if (!token || !token.user_id || (token.role !== 'sales_admin' && token.role !== 'superadmin' && token.role !== 'businessBrand')) {
+    if (!token || !token.user_id || (token.role !== 'sales_admin' && token.role !== 'supervisor' && token.role !== 'superadmin' && token.role !== 'businessBrand')) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -159,7 +159,7 @@ export async function PUT(req: NextRequest) {
     // Auth Check
     const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
 
-    if (!token || !token.user_id || (token.role !== 'sales_admin' && token.role !== 'superadmin' && token.role !== 'businessBrand')) {
+    if (!token || !token.user_id || (token.role !== 'sales_admin' && token.role !== 'supervisor' && token.role !== 'superadmin' && token.role !== 'businessBrand')) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -219,7 +219,7 @@ export async function DELETE(req: NextRequest) {
     // Auth Check
     const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
 
-    if (!token || !token.user_id || (token.role !== 'sales_admin' && token.role !== 'superadmin' && token.role !== 'businessBrand')) {
+    if (!token || !token.user_id || (token.role !== 'sales_admin' && token.role !== 'supervisor' && token.role !== 'superadmin' && token.role !== 'businessBrand')) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

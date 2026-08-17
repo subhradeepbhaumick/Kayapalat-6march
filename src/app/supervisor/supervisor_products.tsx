@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState, useEffect } from "react";
 import {
   Package,
@@ -25,7 +24,8 @@ import { autoTable } from "jspdf-autotable";
 import CartModal from "../sales-admin/cartModal";
 import { Product } from "@/types/product";
 import { CartItem } from "@/types/cart";
-
+import BusinessBrandKayapalatChatModal from "../businessBrand/BusinessBrandKayapalatChatModal";
+import { MessageCircle } from "lucide-react";
 interface OrderItem {
   order_id: string;
   product_id: number;
@@ -37,15 +37,12 @@ interface OrderItem {
   client_name?: string;
   agent_id: string;
 }
-
 interface OrderItemsState {
   orderItems: OrderItem[];
 }
-
 const ProductsTab = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [quantity, setQuantity] = useState(1);
@@ -56,10 +53,10 @@ const ProductsTab = () => {
   const [extraTransportCost, setExtraTransportCost] = useState(0);
   const [session, setSession] = useState<Session | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
+  const [stockFilter, setStockFilter] = useState<"all" | "in_showroom" | "awaiting_confirmation">("all");
   const [selectedCompanyFilter, setSelectedCompanyFilter] =
     useState<string>("All");
   const [productNameSearch, setProductNameSearch] = useState<string>("");
-
   const [pendingClientNames, setPendingClientNames] = useState<{
     [key: string]: string;
   }>({});
@@ -68,6 +65,7 @@ const ProductsTab = () => {
   const [selectedCompany, setSelectedCompany] = useState<string>("ALL");
   const [selectedAgent, setSelectedAgent] = useState<string>("ALL");
   const [showBuyModal, setShowBuyModal] = useState(false);
+  const [chatModalOpen, setChatModalOpen] = useState(false);
   const [buyFormData, setBuyFormData] = useState({
     agentId: "",
     clientName: "",
@@ -86,19 +84,44 @@ const ProductsTab = () => {
   const selectedCart = cart.filter((item) =>
     selectedOrderIds.includes(item.order_id)
   );
-
+  const updateShowroomStock = async (productId: number, status: number) => {
+    try {
+      const res = await fetch("/api/sales-admin/products", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          product_id: productId,
+          showroom_stock: status,
+        }),
+      });
+      if (!res.ok) throw new Error();
+      // Update UI instantly
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.product_id === productId
+            ? { ...p, showroom_stock: status }
+            : p
+        )
+      );
+      toast.success("Showroom stock updated");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to update showroom stock");
+    }
+  };
   // Get unique categories
   const categories = [
     "All",
     ...Array.from(new Set(products.map((product) => product.category))),
   ];
-
   // Get unique company names for filter
   const companyNamesForFilter = [
     "All",
     ...Array.from(new Set(products.map((product) => product.company_name))),
   ];
-
   // Filter products based on selected category and company
   const filteredProducts = products.filter((product) => {
     const categoryMatch =
@@ -111,15 +134,13 @@ const ProductsTab = () => {
       product.product_name
         .toLowerCase()
         .includes(productNameSearch.toLowerCase());
-    return categoryMatch && companyMatch && nameMatch;
+    const stockMatch = stockFilter === "all" || (stockFilter === "in_showroom" && product.showroom_stock === 2) || (stockFilter === "awaiting_confirmation" && product.showroom_stock === 1);
+    return categoryMatch && companyMatch && nameMatch && stockMatch;
   });
-
   // Get unique companies from cart
   const companies = Array.from(new Set(cart.map((item) => item.company_name)));
-
   // Get unique agents from cart
   const agents = Array.from(new Set(cart.map((item) => item.agent_id)));
-
   // Filter cart based on selected company and agent
   const filteredCart = (
     selectedCompany === "ALL"
@@ -128,7 +149,6 @@ const ProductsTab = () => {
   ).filter(
     (item) => selectedAgent === "ALL" || item.agent_id === selectedAgent
   );
-
   const fetchCart = async (session: Session | null) => {
     try {
       const cartRes = await fetch("/api/sales-admin/buy-product", {
@@ -161,7 +181,6 @@ const ProductsTab = () => {
               changed_price: item.changed_price,
             })
           );
-
           setCart(cartItems);
         }
       }
@@ -170,7 +189,6 @@ const ProductsTab = () => {
       toast.error("Failed to fetch cart");
     }
   };
-
   const handleClientNameChange = async (
     orderIds: string[],
     clientName: string
@@ -187,7 +205,6 @@ const ProductsTab = () => {
           client_name: clientName,
         }),
       });
-
       if (response.ok) {
         await fetchCart(session); // Refetch cart to update display
         toast.success("Client name updated successfully");
@@ -199,7 +216,6 @@ const ProductsTab = () => {
       toast.error("Failed to update client name");
     }
   };
-
   // Fetch products and cart
   useEffect(() => {
     const fetchProductsAndCart = async () => {
@@ -212,7 +228,6 @@ const ProductsTab = () => {
           return;
         }
         setSession(session);
-
         // Fetch products
         const productsRes = await fetch("/api/sales-admin/products", {
           credentials: "include",
@@ -230,7 +245,6 @@ const ProductsTab = () => {
         } else {
           toast.error("Failed to fetch products");
         }
-
         // Fetch cart items
         await fetchCart(session);
       } catch (error) {
@@ -240,7 +254,6 @@ const ProductsTab = () => {
         setLoading(false);
       }
     };
-
     fetchProductsAndCart();
   }, []);
   const handlePlus = async (item: CartItem) => {
@@ -262,23 +275,20 @@ const ProductsTab = () => {
           discounted_amount: newCalculatedPrice,
         }),
       });
-
       if (!response.ok) {
         throw new Error("Failed to increase quantity");
       }
-
       setCart((prev) =>
         prev.map((ci) =>
           ci.order_id === item.order_id
             ? {
-                ...ci,
-                quantity: newQuantity,
-                calculatedPrice: newCalculatedPrice,
-              }
+              ...ci,
+              quantity: newQuantity,
+              calculatedPrice: newCalculatedPrice,
+            }
             : ci
         )
       );
-
       toast.success("Quantity increased");
     } catch (error) {
       console.error(error);
@@ -305,23 +315,20 @@ const ProductsTab = () => {
             discounted_amount: newCalculatedPrice,
           }),
         });
-
         if (!response.ok) {
           throw new Error("Failed to decrease quantity");
         }
-
         setCart((prev) =>
           prev.map((ci) =>
             ci.order_id === item.order_id
               ? {
-                  ...ci,
-                  quantity: newQuantity,
-                  calculatedPrice: newCalculatedPrice,
-                }
+                ...ci,
+                quantity: newQuantity,
+                calculatedPrice: newCalculatedPrice,
+              }
               : ci
           )
         );
-
         toast.success("Quantity decreased");
       } catch (error) {
         console.error(error);
@@ -339,21 +346,17 @@ const ProductsTab = () => {
         credentials: "include",
         body: JSON.stringify({ order_id: orderId }),
       });
-
       if (!response.ok) {
         throw new Error("Failed to remove from cart");
       }
-
       setCart((prev) => prev.filter((item) => item.order_id !== orderId));
       setSelectedOrderIds((prev) => prev.filter((id) => id !== orderId));
-
       toast.success("Removed from cart");
     } catch (error) {
       console.error(error);
       toast.error("Failed to remove from cart");
     }
   };
-
   const openProductModal = (product: Product) => {
     setSelectedProduct(product);
     setQuantity(1);
@@ -362,7 +365,6 @@ const ProductsTab = () => {
     setExtraTransportCost(0);
     setShowModal(true);
   };
-
   const closeModal = () => {
     setShowModal(false);
     setSelectedProduct(null);
@@ -370,11 +372,9 @@ const ProductsTab = () => {
     setCurrentImageIndex(0);
     setDiscountPercentage(0);
   };
-
   const calculatePrice = (product: Product, qty: number) => {
     return product.final_product_cost * qty;
   };
-
   const calculateDiscountedPrice = (
     product: Product,
     qty: number,
@@ -383,10 +383,8 @@ const ProductsTab = () => {
     const basePrice = product.final_product_cost * qty;
     return basePrice - (basePrice * discountPercent) / 100;
   };
-
   const addToCart = async () => {
     if (!selectedProduct) return;
-
     try {
       // Calculate values
       const finalProductCost = Number(selectedProduct.final_product_cost || 0);
@@ -394,16 +392,13 @@ const ProductsTab = () => {
       const transportationCost = Number(
         selectedProduct.transportation_cost || 0
       );
-
-      const productMrp = finalProductCost * 100 / (100 + gstPercentage);
-      const discountAmount = productMrp * discountPercentage / 100;
-      const gstCalculated = productMrp * gstPercentage / 100;
-      const finalPricePerUnit =
-        productMrp - discountAmount + gstCalculated ;
+      const productMrp = (finalProductCost * 100) / (100 + gstPercentage);
+      const discountAmount = (productMrp * discountPercentage) / 100;
+      const gstCalculated = (productMrp * gstPercentage) / 100;
+      const finalPricePerUnit = productMrp - discountAmount + gstCalculated;
       const totalPrice =
         finalPricePerUnit * quantity +
         (selectedProduct.transport_exclude === 1 ? extraTransportCost : 0);
-
       // Insert into buy_product table
       const response = await fetch("/api/sales-admin/buy-product", {
         method: "POST",
@@ -433,13 +428,10 @@ const ProductsTab = () => {
           action: "Added to cart",
         }),
       });
-
       if (!response.ok) {
         throw new Error("Failed to add to buy_product table");
       }
-
       await fetchCart(session);
-
       toast.success("Added to cart successfully!");
       closeModal();
     } catch (error) {
@@ -447,27 +439,22 @@ const ProductsTab = () => {
       toast.error("Failed to add to cart. Please try again.");
     }
   };
-
   const getTotalAmount = () =>
     cart
       .filter((item) => selectedOrderIds.includes(item.order_id))
       .reduce((sum, item) => sum + item.calculatedPrice, 0);
-
   const getTotalCommission = () =>
     cart
       .filter((item) => selectedOrderIds.includes(item.order_id))
       .reduce((sum, item) => sum + item.commission_amount * item.quantity, 0);
-
   const getTotalGST = () =>
     cart
       .filter((item) => selectedOrderIds.includes(item.order_id))
       .reduce((sum, item) => sum + item.gst_amount * item.quantity, 0);
-
   const getTotalTransportation = () =>
     cart
       .filter((item) => selectedOrderIds.includes(item.order_id))
       .reduce((sum, item) => sum + item.transportation_cost * item.quantity, 0);
-
   const completePurchase = async () => {
     // Validation
     if (!buyFormData.clientName.trim()) {
@@ -493,7 +480,6 @@ const ProductsTab = () => {
       toast.error("Session not available. Please log in again.");
       return;
     }
-
     try {
       // Complete the purchase with all form data
       const response = await fetch("/api/sales-admin/complete-purchase", {
@@ -520,17 +506,32 @@ const ProductsTab = () => {
           extraTransportationCost: buyFormData.extraTransportationCost,
         }),
       });
-
       if (!response.ok) {
         throw new Error("Failed to complete purchase");
       }
-
       const result = await response.json();
       console.log("Purchase completed:", result);
       const orderId = result.o_id || "N/A";
-
+      // Fetch dealer info for invoice customization
+      let dealerCompanyName = "KAYAPALAT";
+      let dealerCompositeGST = false;
+      let dealerAddress: string | null = null;
+      let dealerPhone: string | null = null;
+      try {
+        const dealerRes = await fetch(
+          `/api/sales-admin/check-composite-gst?dealer_id=${selectedCart[0]?.dealer_id}`
+        );
+        const dealerData = await dealerRes.json();
+        dealerCompositeGST = dealerData.composite_gst_scheme === 1;
+        if (dealerData.composite_gst_scheme === 1 && dealerData.company_name) {
+          dealerCompanyName = dealerData.company_name;
+          dealerAddress = dealerData.address ?? null;
+          dealerPhone = dealerData.phone ?? null;
+        }
+      } catch {
+        // fallback to defaults
+      }
       const doc = new jsPDF();
-
       // =====================
       // COLORS & CONSTANTS
       // =====================
@@ -553,61 +554,65 @@ const ProductsTab = () => {
       doc.setFontSize(22);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(41, 90, 71); // #295A47
-      doc.text("KAYAPALAT", PAGE_WIDTH / 2, 18, { align: "center" });
-
-      doc.setFontSize(11);
-      doc.setFont("helvetica", "normal");
-      doc.text("Professional Interior Solutions", PAGE_WIDTH / 2, 26, {
+      doc.text(dealerCompanyName.toUpperCase(), PAGE_WIDTH / 2, 18, {
         align: "center",
       });
-
-      doc.setFontSize(9);
-      doc.text(
-        "1160 Chadpur Poleghat, Mouza 80, Sonarpur, Kolkata - 700145, WB, India",
-        PAGE_WIDTH / 2,
-        32,
-        { align: "center" }
-      );
-
-      doc.text("Phone/WhatsApp: 602-602-602-6", PAGE_WIDTH / 2, 38, {
-        align: "center",
-      });
-
+      if (dealerCompositeGST) {
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "normal");
+        if (dealerAddress) {
+          doc.text(dealerAddress, PAGE_WIDTH / 2, 26, { align: "center" });
+        }
+        if (dealerPhone) {
+          doc.text(`Phone/WhatsApp: ${dealerPhone}`, PAGE_WIDTH / 2, 32, {
+            align: "center",
+          });
+        }
+      } else {
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "normal");
+        doc.text("Professional Interior Solutions", PAGE_WIDTH / 2, 26, {
+          align: "center",
+        });
+        doc.setFontSize(9);
+        doc.text(
+          "1160 Chadpur Poleghat, Mouza 80, Sonarpur, Kolkata - 700145, WB, India",
+          PAGE_WIDTH / 2,
+          32,
+          { align: "center" }
+        );
+        doc.text("Phone/WhatsApp: 602-602-602-6", PAGE_WIDTH / 2, 38, {
+          align: "center",
+        });
+      }
       // =====================
       // INVOICE NUMBER + DATE (SAME LINE)
       // =====================
       // const invoiceNumber = `INV-O-${new Date()
       //   .toLocaleString("sv-SE", { timeZone: "Asia/Kolkata" })
       //   .replace(/[-: ]/g, "")}`;
-
-      const invoiceDate = new Date().toLocaleString();
-
+      const invoiceDate = new Date().toLocaleString('en-IN');
       doc.setFontSize(10);
       doc.setTextColor(0);
       doc.text(`Invoice No: INV-${orderId} `, 14, 48);
       doc.text(`Date: ${invoiceDate}`, PAGE_WIDTH - 14, 48, {
         align: "right",
       });
-
       // =====================
       // PARTITION LINE
       // =====================
       doc.setDrawColor(180);
       doc.line(PAGE_WIDTH / 2, 55, PAGE_WIDTH / 2, 105);
-
       // =====================
       // LEFT SIDE → PAYMENT DETAILS
       // =====================
       doc.setFont("helvetica", "bold");
       doc.text("Payment Details", 14, 60);
-
       doc.setFont("helvetica", "normal");
       doc.text(`Payment Type: ${buyFormData.paymentType}`, 14, 68);
-
       if (buyFormData.paymentType === "UPI") {
         doc.text(`Transaction ID: ${buyFormData.transactionId}`, 14, 76);
       }
-
       doc.text(
         `Total Amount: Rs. ${buyFormData.totalAmount.toLocaleString()}`,
         14,
@@ -619,52 +624,72 @@ const ProductsTab = () => {
         92
       );
       doc.text(`Due: Rs. ${buyFormData.dueAmount.toLocaleString()}`, 14, 100);
-
       // =====================
       // RIGHT SIDE → INVOICE + BILL TO
       // =====================
       const rightX = PAGE_WIDTH / 2 + 8;
-
       doc.setFont("helvetica", "bold");
       doc.text("Bill To", rightX, 60);
-
       doc.setFont("helvetica", "normal");
       doc.text(`${buyFormData.clientName || "N/A"}`, rightX, 68);
-
       doc.text(`Phone: ${buyFormData.clientPhone || "N/A"}`, rightX, 76);
       doc.text(`GSTIN: ${buyFormData.client_gstin || "N/A"}`, rightX, 84);
-
       doc.text(`Representative: ${session.user?.name || "N/A"}`, rightX, 92);
-
       // =====================
       // PRODUCT TABLE
       // =====================
-      const tableColumns = [
-        "S.No",
-        "Product",
-        "Company",
-        "Unit Price",
-        "Discount",
-        "GST",
-        "Quantity",
-        "Transport Cost",
-        "Total",
-      ];
-
-      const tableRows = selectedCart.map((item, index) => [
-        index + 1,
-        item.product_name,
-        item.company_name,
-        `Rs. ${item.product_mrp.toLocaleString()}`,
-        item.discount_percentage > 0
-          ? `${item.discount_percentage}% - ${item.discount.toLocaleString()}`
-          : "-",
-        `${item.gst}% - ${item.gst_amount.toLocaleString()}`,
-        item.quantity,
-        `Rs. ${item.transport_exclude.toLocaleString()}`,
-        `Rs. ${item.calculatedPrice.toLocaleString()}`,
-      ]);
-
+      const tableColumns = dealerCompositeGST
+        ? [
+          "S.No",
+          "Product",
+          "Company",
+          "Unit Price",
+          "Discount",
+          "Quantity",
+          "Transport Cost",
+          "Total",
+        ]
+        : [
+          "S.No",
+          "Product",
+          "Company",
+          "Unit Price",
+          "Discount",
+          "GST",
+          "Quantity",
+          "Transport Cost",
+          "Total",
+        ];
+      const tableRows = selectedCart.map((item, index) =>
+        dealerCompositeGST
+          ? [
+            index + 1,
+            item.product_name,
+            item.company_name,
+            `Rs. ${item.product_mrp.toLocaleString()}`,
+            item.discount_percentage > 0
+              ? `${item.discount_percentage
+              }% - ${item.discount.toLocaleString()}`
+              : "-",
+            item.quantity,
+            `Rs. ${item.transport_exclude.toLocaleString()}`,
+            `Rs. ${item.calculatedPrice.toLocaleString()}`,
+          ]
+          : [
+            index + 1,
+            item.product_name,
+            item.company_name,
+            `Rs. ${item.product_mrp.toLocaleString()}`,
+            item.discount_percentage > 0
+              ? `${item.discount_percentage
+              }% - ${item.discount.toLocaleString()}`
+              : "-",
+            `${item.gst}% - ${item.gst_amount.toLocaleString()}`,
+            item.quantity,
+            `Rs. ${item.transport_exclude.toLocaleString()}`,
+            `Rs. ${item.calculatedPrice.toLocaleString()}`,
+          ]
+      );
       autoTable(doc, {
         head: [tableColumns],
         body: tableRows,
@@ -688,29 +713,27 @@ const ProductsTab = () => {
           });
         },
       });
-
       // =====================
       // SUMMARY TABLE
       // =====================
-      const totalProductCost = selectedCart.reduce((sum, item) => sum + item.product_mrp * item.quantity, 0);
-      const totalDiscount = selectedCart.reduce((sum, item) => sum + item.discount * item.quantity, 0);
+      const totalProductCost = selectedCart.reduce(
+        (sum, item) => sum + item.product_mrp * item.quantity,
+        0
+      );
+      const totalDiscount = selectedCart.reduce(
+        (sum, item) => sum + item.discount * item.quantity,
+        0
+      );
       const totalGSTAmount = getTotalGST();
-
       autoTable(doc, {
         head: [["Description", "Amount"]],
         body: [
-          [
-            "Total Product Cost",
-            `Rs. ${totalProductCost.toLocaleString()}`,
-          ],
-          [
-            "Total Discount",
-            `Rs. ${totalDiscount.toLocaleString()}`,
-          ],
-          [
-            "Total GST",
-            `Rs. ${totalGSTAmount.toLocaleString()}`,
-          ],
+          ["Total Product Cost", `Rs. ${totalProductCost.toLocaleString()}`],
+          ["Total Discount", `Rs. ${totalDiscount.toLocaleString()}`],
+          // Only show GST row if NOT composite GST scheme
+          ...(!dealerCompositeGST
+            ? [["Total GST", `Rs. ${totalGSTAmount.toLocaleString()}`]]
+            : []),
           [
             "Extra Transportation Cost",
             `Rs. ${buyFormData.extraTransportationCost.toLocaleString()}`,
@@ -731,18 +754,15 @@ const ProductsTab = () => {
           fontStyle: "bold",
         },
       });
-
       // =====================
       // FOOTER (ALWAYS AFTER TABLE)
       // =====================
       const finalY = (doc as any).lastAutoTable.finalY + 10;
-
       doc.setFontSize(9);
       doc.setFont("helvetica", "bold");
       doc.text("Thank you for your business!", PAGE_WIDTH / 2, finalY, {
         align: "center",
       });
-
       doc.setFont("helvetica", "normal");
       doc.text(
         "Terms & Conditions: All sales are final. Warranty as per manufacturer terms.",
@@ -750,17 +770,33 @@ const ProductsTab = () => {
         finalY + 8,
         { align: "center" }
       );
-
-      doc.text(
-        `Generated on ${new Date().toLocaleString()}`,
-        PAGE_WIDTH / 2,
-        finalY + 16,
-        { align: "center" }
-      );
-
+      if (dealerCompositeGST) {
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(180, 0, 0);
+        doc.text(
+          "Declaration: Composition taxable person, not eligible to collect tax on supplies",
+          PAGE_WIDTH / 2,
+          finalY + 18,
+          { align: "center" }
+        );
+        doc.setTextColor(0);
+        doc.setFont("helvetica", "normal");
+        doc.text(
+          `Generated on ${new Date().toLocaleString('en-IN')}`,
+          PAGE_WIDTH / 2,
+          finalY + 28,
+          { align: "center" }
+        );
+      } else {
+        doc.text(
+          `Generated on ${new Date().toLocaleString('en-IN')}`,
+          PAGE_WIDTH / 2,
+          finalY + 16,
+          { align: "center" }
+        );
+      }
       // Save the PDF
       doc.save(`Invoice_${orderId}.pdf`);
-
       toast.success("Purchase completed successfully! Invoice generated.");
       // Remove selected items from cart
       setCart((prev) =>
@@ -790,24 +826,19 @@ const ProductsTab = () => {
       toast.error("Failed to complete purchase. Please try again.");
     }
   };
-
   const generateInvoice = async () => {
     if (selectedOrderIds.length === 0) {
       toast.error("No items selected. Please select items to buy.");
       return;
     }
-
     if (!session) {
       toast.error("Session not available. Please log in again.");
       return;
     }
-
     try {
       // Filter cart to only selected items
-
       // First, place the order by updating selected cart items to 'Ordered'
       const orderIds = selectedCart.map((item) => item.order_id);
-
       if (orderIds.length > 0) {
         const response = await fetch("/api/sales-admin/place-order", {
           method: "PUT",
@@ -817,36 +848,28 @@ const ProductsTab = () => {
           credentials: "include",
           body: JSON.stringify({ order_id: orderIds }),
         });
-
         if (!response.ok) {
           throw new Error("Failed to place order");
         }
-
         const result = await response.json();
         console.log("Order placed:", result);
       }
-
       // Generate PDF invoice
       const doc = new jsPDF();
-
       // Company Header
       doc.setFontSize(20);
       doc.setFont("helvetica", "bold");
       doc.text("KAYAPALAT", 105, 20, { align: "center" });
-
       doc.setFontSize(12);
       doc.setFont("helvetica", "normal");
       doc.text("Professional Interior Solutions", 105, 30, { align: "center" });
       doc.text("Invoice", 105, 40, { align: "center" });
-
       // Invoice Details
       const invoiceNumber = `INV-${Date.now()}`;
       const invoiceDate = new Date().toLocaleDateString();
-
       doc.setFontSize(10);
       doc.text(`Invoice Number: ${invoiceNumber}`, 20, 55);
       doc.text(`Date: ${invoiceDate}`, 20, 65);
-
       // Bill To Details
       doc.text("Bill To:", 20, 80);
       doc.text("KAYAPALAT", 20, 90);
@@ -857,7 +880,6 @@ const ProductsTab = () => {
       );
       doc.text("Phone/WhatsApp: 60260-26026", 20, 110);
       doc.text(`Sales Admin: ${session.user?.name || "N/A"}`, 20, 120);
-
       // Shipping Address
       doc.text("Ship To:", 20, 140);
       doc.text("KAYAPALAT MAIN BRANCH", 20, 150);
@@ -867,7 +889,6 @@ const ProductsTab = () => {
         160
       );
       doc.text("Contact for more Detail: 60260-26026", 20, 170);
-
       // Table Headers
       const tableColumns = [
         "S.No",
@@ -887,7 +908,6 @@ const ProductsTab = () => {
         item.discountPercentage > 0 ? `${item.discountPercentage}%` : "-",
         `₹${item.calculatedPrice.toLocaleString()}`,
       ]);
-
       // Calculate totals
       const subtotal = getTotalAmount();
       const totalGST = getTotalGST();
@@ -895,7 +915,6 @@ const ProductsTab = () => {
       const totalTransportation = getTotalTransportation();
       const grandTotal =
         subtotal - totalGST - totalCommission - totalTransportation;
-
       // Add table
       autoTable(doc, {
         head: [tableColumns],
@@ -915,7 +934,6 @@ const ProductsTab = () => {
           fillColor: [247, 247, 247],
         },
       });
-
       // Footer
       const pageHeight = doc.internal.pageSize.height;
       doc.setFontSize(8);
@@ -930,15 +948,13 @@ const ProductsTab = () => {
         { align: "center" }
       );
       doc.text(
-        `Generated on ${new Date().toLocaleString()}`,
+        `Generated on ${new Date().toLocaleString('en-IN')}`,
         105,
         pageHeight - 10,
         { align: "center" }
       );
-
       // Save the PDF
       doc.save(`Invoice_${invoiceNumber}.pdf`);
-
       toast.success("Order placed successfully! Invoice generated.");
       // Remove selected items from cart after invoice generation
       setCart((prev) =>
@@ -951,7 +967,6 @@ const ProductsTab = () => {
       toast.error("Failed to generate invoice. Please try again.");
     }
   };
-
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -959,7 +974,6 @@ const ProductsTab = () => {
       </div>
     );
   }
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -987,7 +1001,6 @@ const ProductsTab = () => {
           </button>
         </div>
       </div>
-
       {/* Filters & Search */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 items-end">
         {/* Category Filter */}
@@ -1013,7 +1026,6 @@ const ProductsTab = () => {
             ))}
           </select>
         </div>
-
         {/* Company Filter */}
         <div>
           <label
@@ -1037,7 +1049,6 @@ const ProductsTab = () => {
             ))}
           </select>
         </div>
-
         {/* Product Name Search */}
         <div>
           <label
@@ -1055,8 +1066,36 @@ const ProductsTab = () => {
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#295A47] focus:border-transparent text-sm"
           />
         </div>
+        <div className="flex gap-2 mt-2">
+          <button
+            onClick={() => setStockFilter("all")}
+            className={`px-3 py-2 rounded-lg text-sm font-medium ${stockFilter === "all"
+              ? "bg-[#295A47] text-white"
+              : "bg-white border border-gray-300 text-gray-700"
+              }`}
+          >
+            All Products({products.length})
+          </button>
+          <button
+            onClick={() => setStockFilter("in_showroom")}
+            className={`px-3 py-2 rounded-lg text-sm font-medium ${stockFilter === "in_showroom"
+              ? "bg-[#295A47] text-white"
+              : "bg-white border border-gray-300 text-gray-700"
+              }`}
+          >
+            Showroom Stock ({products.filter((p) => p.showroom_stock === 2).length})
+          </button>
+          <button
+            onClick={() => setStockFilter("awaiting_confirmation")}
+            className={`px-3 py-2 rounded-lg text-sm font-medium ${stockFilter === "awaiting_confirmation"
+              ? "bg-[#295A47] text-white"
+              : "bg-white border border-gray-300 text-gray-700"
+              }`}
+          >
+            Awaiting Confirmation ({products.filter((p) => p.showroom_stock === 1).length})
+          </button>
+        </div>
       </div>
-
       {/* Products Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {filteredProducts.map((product: Product) => (
@@ -1097,11 +1136,10 @@ const ProductsTab = () => {
               )}
               <div className="absolute top-2 right-2 flex flex-col space-y-1">
                 <span
-                  className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    product.is_active
-                      ? "bg-green-100 text-green-800"
-                      : "bg-red-100 text-red-800"
-                  }`}
+                  className={`px-2 py-1 rounded-full text-xs font-medium ${product.is_active
+                    ? "bg-green-100 text-green-800"
+                    : "bg-red-100 text-red-800"
+                    }`}
                 >
                   {product.is_active ? "In Stock" : "Out Of Stock"}
                 </span>
@@ -1112,7 +1150,6 @@ const ProductsTab = () => {
                 )}
               </div>
             </div>
-
             {/* Product Info */}
             <div className="p-4">
               <div className="flex justify-between items-start mb-2">
@@ -1123,11 +1160,9 @@ const ProductsTab = () => {
                   {product.category}
                 </span>
               </div>
-
               <p className="text-gray-600 text-sm mb-3 line-clamp-2">
                 {product.short_description}
               </p>
-
               <div className="space-y-1 mb-4">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-500">Product ID:</span>
@@ -1140,26 +1175,67 @@ const ProductsTab = () => {
                   <span className="font-bold text-green-600">
                     ₹
                     {(() => {
-                      const finalProductCost = Number(product.final_product_cost || 0);
+                      const finalProductCost = Number(
+                        product.final_product_cost || 0
+                      );
                       const gstPercentage = Number(product.gst_percentage || 0);
                       const transportationCost = Number(
                         product.transportation_cost || 0
                       );
-                      return (
-                        finalProductCost 
-                      ).toFixed(2);
+                      return finalProductCost.toFixed(2);
                     })()}
                   </span>
                 </div>
+                <div className="mt-3 border-t pt-3 space-y-2">
+                  {/* Label */}
+                  <div className="text-sm font-medium text-gray-600">
+                    Showroom Stock
+                  </div>
+                  {/* Status */}
+                  <div>
+                    {product.showroom_stock === 2 && (
+                      <span className="inline-block text-green-600 text-xs font-semibold bg-green-50 px-2 py-1 rounded">
+                        Stock in Showroom
+                      </span>
+                    )}
+                    {product.showroom_stock === 0 && (
+                      <span className="inline-block text-red-500 text-xs font-semibold bg-red-50 px-2 py-1 rounded">
+                        Not in Showroom
+                      </span>
+                    )}
+                    {product.showroom_stock === 1 && (
+                      <span className="inline-block text-yellow-500 text-xs font-semibold bg-yellow-50 px-2 py-1 rounded">
+                        Awaiting Confirmation
+                      </span>
+                    )}
+                  </div>
+                  {/* Buttons */}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() =>
+                        updateShowroomStock(product.product_id, 2)
+                      }
+                      className="flex-1 px-3 py-1.5 text-xs rounded bg-green-100 text-green-700 hover:bg-green-200 transition"
+                    >
+                      Confirm
+                    </button>
+                    <button
+                      onClick={() =>
+                        updateShowroomStock(product.product_id, 0)
+                      }
+                      className="flex-1 px-3 py-1.5 text-xs rounded bg-red-100 text-red-700 hover:bg-red-200 transition"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
               </div>
-
               <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
                 <div className="flex items-center space-x-1">
                   <Truck className="w-3 h-3" />
                   <span>{product.company_name}</span>
                 </div>
               </div>
-
               <button
                 onClick={() => openProductModal(product)}
                 className="w-full bg-[#295A47] text-white py-2 px-4 rounded-lg hover:bg-[#1e3d32] transition-colors flex items-center justify-center space-x-2"
@@ -1171,7 +1247,6 @@ const ProductsTab = () => {
           </div>
         ))}
       </div>
-
       {products.length === 0 && (
         <div className="text-center py-12">
           <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -1184,7 +1259,6 @@ const ProductsTab = () => {
           </p>
         </div>
       )}
-
       {/* Product Detail Modal */}
       {showModal && selectedProduct && (
         <div className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -1202,13 +1276,12 @@ const ProductsTab = () => {
                   <X className="w-6 h-6" />
                 </button>
               </div>
-
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Product Images */}
                 <div className="space-y-4">
                   <div className="relative h-64 sm:h-96 bg-gray-100 rounded-lg overflow-hidden">
                     {selectedProduct.images &&
-                    selectedProduct.images.length > 0 ? (
+                      selectedProduct.images.length > 0 ? (
                       <>
                         <img
                           src={
@@ -1236,7 +1309,6 @@ const ProductsTab = () => {
                       </div>
                     )}
                   </div>
-
                   {/* Image Thumbnails */}
                   {selectedProduct.images &&
                     selectedProduct.images.length > 1 && (
@@ -1246,11 +1318,10 @@ const ProductsTab = () => {
                             <button
                               key={image.image_id}
                               onClick={() => setCurrentImageIndex(index)}
-                              className={`flex-shrink-0 w-12 h-12 sm:w-16 sm:h-16 rounded-lg overflow-hidden border-2 ${
-                                currentImageIndex === index
-                                  ? "border-[#295A47]"
-                                  : "border-gray-200"
-                              }`}
+                              className={`flex-shrink-0 w-12 h-12 sm:w-16 sm:h-16 rounded-lg overflow-hidden border-2 ${currentImageIndex === index
+                                ? "border-[#295A47]"
+                                : "border-gray-200"
+                                }`}
                             >
                               <img
                                 src={image.image_url}
@@ -1269,7 +1340,6 @@ const ProductsTab = () => {
                       </div>
                     )}
                 </div>
-
                 {/* Product Details */}
                 <div className="space-y-6">
                   {/* Basic Info */}
@@ -1279,11 +1349,10 @@ const ProductsTab = () => {
                         {selectedProduct.category}
                       </span>
                       <span
-                        className={`px-3 py-1 rounded-full text-sm font-medium ${
-                          selectedProduct.is_active
-                            ? "bg-green-100 text-green-800"
-                            : "bg-red-100 text-red-800"
-                        }`}
+                        className={`px-3 py-1 rounded-full text-sm font-medium ${selectedProduct.is_active
+                          ? "bg-green-100 text-green-800"
+                          : "bg-red-100 text-red-800"
+                          }`}
                       >
                         {selectedProduct.is_active
                           ? "In Stock"
@@ -1302,7 +1371,6 @@ const ProductsTab = () => {
                       {selectedProduct.about_product}
                     </p>
                   </div>
-
                   {/* Manufacturer Info */}
                   <div className="bg-gray-50 rounded-lg p-4">
                     <h3 className="font-semibold text-[#295A47] mb-3 flex items-center">
@@ -1330,7 +1398,92 @@ const ProductsTab = () => {
                       </div>
                     </div>
                   </div>
-
+                  {/* SHOWROOM STOCK */}
+                  {/* SHOWROOM STOCK */}
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+                      <h3 className="font-semibold text-[#295A47] flex items-center">
+                        <Package className="w-4 h-4 mr-2" />
+                        Showroom Stock
+                      </h3>
+                      <button
+                        onClick={() => setChatModalOpen(true)}
+                        className="bg-[#295A47] hover:bg-[#1f4637] text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition w-full sm:w-auto"
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                        Chat With Dealer
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* SHOWROOM STOCK */}
+                      <div className="bg-white border border-gray-200 rounded-lg p-4">
+                        <p className="text-sm text-gray-500 mb-2">
+                          Showroom Stock Number
+                        </p>
+                        <input
+                          type="number"
+                          value={selectedProduct.showroom_stock_number || ""}
+                          onChange={(e) => {
+                            setSelectedProduct({
+                              ...selectedProduct,
+                              showroom_stock_number: e.target.value,
+                            });
+                          }}
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#295A47] focus:outline-none"
+                          placeholder="Enter showroom stock"
+                        />
+                      </div>
+                      {/* DEFECT STOCK */}
+                      <div className="bg-white border border-gray-200 rounded-lg p-4">
+                        <p className="text-sm text-gray-500 mb-2">
+                          Defect Stock Number
+                        </p>
+                        <input
+                          type="number"
+                          value={selectedProduct.defect_stock || ""}
+                          onChange={(e) => {
+                            setSelectedProduct({
+                              ...selectedProduct,
+                              defect_stock: e.target.value,
+                            });
+                          }}
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-red-500 focus:outline-none"
+                          placeholder="Enter defect stock"
+                        />
+                      </div>
+                    </div>
+                    {/* SAVE BUTTON */}
+                    <button
+                      onClick={async () => {
+                        try {
+                          const response = await fetch("/api/sales-admin/products", {
+                            method: "PUT",
+                            headers: {
+                              "Content-Type": "application/json",
+                            },
+                            body: JSON.stringify({
+                              product_id: selectedProduct.product_id,
+                              showroom_stock_number:
+                                selectedProduct.showroom_stock_number,
+                              defect_stock: selectedProduct.defect_stock,
+                            }),
+                          });
+                          const data = await response.json();
+                          if (response.ok) {
+                            toast.success("Stock updated successfully");
+                          } else {
+                            toast.error(data.error || "Failed to update stock");
+                          }
+                        } catch (error) {
+                          console.error(error);
+                          toast.error("Something went wrong");
+                        }
+                      }}
+                      className="mt-4 w-full bg-[#295A47] hover:bg-[#1f4637] text-white py-3 rounded-lg transition font-medium"
+                    >
+                      Save Stock Details
+                    </button>
+                  </div>
                   {/* Pricing */}
                   <div className="bg-gray-50 rounded-lg p-4">
                     <h3 className="font-semibold text-[#295A47] mb-3 flex items-center">
@@ -1343,14 +1496,21 @@ const ProductsTab = () => {
                         <span className="text-xl font-bold text-[#295A47]">
                           ₹
                           {(() => {
-                            const finalProductCost = Number(selectedProduct.final_product_cost || 0);
-                            const gstPercentage = Number(selectedProduct.gst_percentage || 0);
-                            const productCost = (finalProductCost * 100) / (100 + gstPercentage);
-                            return productCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                            const finalProductCost = Number(
+                              selectedProduct.final_product_cost || 0
+                            );
+                            const gstPercentage = Number(
+                              selectedProduct.gst_percentage || 0
+                            );
+                            const productCost =
+                              (finalProductCost * 100) / (100 + gstPercentage);
+                            return productCost.toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            });
                           })()}
                         </span>
                       </div>
-
                       {/* Discount Section */}
                       <div className="border-t pt-3">
                         <h4 className="font-medium text-[#295A47] mb-2">
@@ -1384,12 +1544,19 @@ const ProductsTab = () => {
                               <span className="text-red-600">
                                 -₹
                                 {(() => {
-                                  const finalProductCost = Number(selectedProduct.final_product_cost || 0);
-                                  const gstPercentage = Number(selectedProduct.gst_percentage || 0);
-                                  const productCost = (100 + gstPercentage) !== 0 
-                                    ? (finalProductCost * 100) / (100 + gstPercentage) 
-                                    : 0;
-                                  const discountAmount = (productCost * discountPercentage) / 100;
+                                  const finalProductCost = Number(
+                                    selectedProduct.final_product_cost || 0
+                                  );
+                                  const gstPercentage = Number(
+                                    selectedProduct.gst_percentage || 0
+                                  );
+                                  const productCost =
+                                    100 + gstPercentage !== 0
+                                      ? (finalProductCost * 100) /
+                                      (100 + gstPercentage)
+                                      : 0;
+                                  const discountAmount =
+                                    (productCost * discountPercentage) / 100;
                                   return discountAmount.toFixed(2);
                                 })()}
                               </span>
@@ -1397,38 +1564,43 @@ const ProductsTab = () => {
                           </div>
                         )}
                       </div>
-
                       {/* GST Section */}
-                      <div className="border-t pt-3">
-                        <h4 className="font-medium text-[#295A47] mb-2">
-                          GST Details
-                        </h4>
-                        <div className="space-y-2">
-                          <div className="flex justify-between items-center">
-                            <span className="font-medium">GST(%):</span>
-                            <span className="text-gray-600">
-                              {Number(selectedProduct.gst_percentage || 0)}%
-                            </span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="font-medium">GST Amount:</span>
-                            <span className="text-blue-600">
-                              ₹
-                              {(() => {
-                                const finalProductCost = Number(selectedProduct.final_product_cost || 0);
-                                const gstPercentage = Number(
-                                  selectedProduct.gst_percentage || 0
-                                );
-                                const productCost = (100 + gstPercentage) !== 0 
-                                  ? (finalProductCost * 100) / (100 + gstPercentage) 
-                                  : 0;
-                                const calculatedGstAmount = productCost * (gstPercentage / 100);
-                                return calculatedGstAmount.toFixed(2);
-                              })()}
-                            </span>
-                          </div>
-
-                          {/* <div className="flex justify-between items-center">
+                      {Number(selectedProduct.composite_gst_scheme || 0) ===
+                        0 ? (
+                        <div className="border-t pt-3">
+                          <h4 className="font-medium text-[#295A47] mb-2">
+                            GST Details
+                          </h4>
+                          <div className="space-y-2">
+                            <div className="flex justify-between items-center">
+                              <span className="font-medium">GST(%):</span>
+                              <span className="text-gray-600">
+                                {Number(selectedProduct.gst_percentage || 0)}%
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="font-medium">GST Amount:</span>
+                              <span className="text-blue-600">
+                                ₹
+                                {(() => {
+                                  const finalProductCost = Number(
+                                    selectedProduct.final_product_cost || 0
+                                  );
+                                  const gstPercentage = Number(
+                                    selectedProduct.gst_percentage || 0
+                                  );
+                                  const productCost =
+                                    100 + gstPercentage !== 0
+                                      ? (finalProductCost * 100) /
+                                      (100 + gstPercentage)
+                                      : 0;
+                                  const calculatedGstAmount =
+                                    productCost * (gstPercentage / 100);
+                                  return calculatedGstAmount.toFixed(2);
+                                })()}
+                              </span>
+                            </div>
+                            {/* <div className="flex justify-between items-center">
                             <span className="font-medium">
                               Transportation Cost:
                             </span>
@@ -1439,44 +1611,48 @@ const ProductsTab = () => {
                               ).toFixed(2)}
                             </span>
                           </div> */}
-
-                          <div className="flex justify-between items-center">
-                            <span className="font-medium">
-                              Final Price (per unit):
-                            </span>
-                            <div className="flex items-center gap-2">
-                              {Number((selectedProduct as any).sell_mrp) > 0 && (
-                                <span className="text-red-500 line-through text-sm">
+                            <div className="flex justify-between items-center">
+                              <span className="font-medium">
+                                Final Price (per unit):
+                              </span>
+                              <div className="flex items-center gap-2">
+                                {Number((selectedProduct as any).sell_mrp) >
+                                  0 && (
+                                    <span className="text-red-500 line-through text-sm">
+                                      ₹
+                                      {Number(
+                                        (selectedProduct as any).sell_mrp
+                                      ).toLocaleString()}
+                                    </span>
+                                  )}
+                                <span className="text-xl font-bold text-green-600">
                                   ₹
-                                  {Number(
-                                    (selectedProduct as any).sell_mrp
-                                  ).toLocaleString()}
+                                  {(() => {
+                                    const finalProductCost = Number(
+                                      selectedProduct.final_product_cost || 0
+                                    );
+                                    const gstPercentage = Number(
+                                      selectedProduct.gst_percentage || 0
+                                    );
+                                    const productCost =
+                                      100 + gstPercentage !== 0
+                                        ? (finalProductCost * 100) /
+                                        (100 + gstPercentage)
+                                        : 0;
+                                    const discountAmount =
+                                      (productCost * discountPercentage) / 100;
+                                    const gstAmount =
+                                      productCost * (gstPercentage / 100);
+                                    const finalPrice =
+                                      productCost - discountAmount + gstAmount;
+                                    return finalPrice.toFixed(2);
+                                  })()}
                                 </span>
-                              )}
-                              <span className="text-xl font-bold text-green-600">
-                              ₹
-                              {(() => {
-                                const finalProductCost = Number(selectedProduct.final_product_cost || 0);
-                                const gstPercentage = Number(
-                                  selectedProduct.gst_percentage || 0
-                                );
-
-                                const productCost = (100 + gstPercentage) !== 0
-                                  ? (finalProductCost * 100) / (100 + gstPercentage)
-                                  : 0;
-
-                                const discountAmount = (productCost * discountPercentage) / 100;
-                                const gstAmount = productCost * (gstPercentage / 100);
-
-                                const finalPrice = productCost - discountAmount + gstAmount;
-                                return finalPrice.toFixed(2);
-                              })()}
-                            </span>
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-
+                      ) : null}
                       {/* Extra Transport Cost Section - Only for transport excluded products */}
                       {selectedProduct.transport_exclude === 1 && (
                         <div className="border-t pt-3">
@@ -1493,11 +1669,11 @@ const ProductsTab = () => {
                               value={extraTransportCost}
                               onChange={(
                                 e: React.ChangeEvent<HTMLInputElement>
-                              ) =>
+                              ) => {
                                 setExtraTransportCost(
                                   Number(e.target.value) || 0
-                                )
-                              }
+                                );
+                              }}
                               onWheel={(e) => e.preventDefault()}
                               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#295A47] focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:m-0 [&::-webkit-inner-spin-button]:m-0 [&::-webkit-outer-spin-button]:-webkit-appearance-none [&::-webkit-inner-spin-button]:-webkit-appearance-none [&::-moz-appearance]:textfield [&::-webkit-outer-spin-button]:hidden [&::-webkit-inner-spin-button]:hidden [&::-webkit-outer-spin-button]:invisible [&::-webkit-inner-spin-button]:invisible"
                               placeholder="0"
@@ -1507,12 +1683,10 @@ const ProductsTab = () => {
                       )}
                     </div>
                   </div>
-
                   {/* Quantity Selector */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-0">
                     <div className="flex items-center space-x-4">
                       <span className="font-medium">Quantity:</span>
-
                       <div className="flex items-center space-x-2">
                         <button
                           onClick={() => setQuantity(Math.max(1, quantity - 1))}
@@ -1520,7 +1694,6 @@ const ProductsTab = () => {
                         >
                           <Minus className="w-4 h-4" />
                         </button>
-
                         <input
                           type="number"
                           min={1}
@@ -1532,7 +1705,6 @@ const ProductsTab = () => {
                           }
                           className="w-12 text-center font-semibold border rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                         />
-
                         <button
                           onClick={() => setQuantity(quantity + 1)}
                           className="w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center"
@@ -1542,7 +1714,6 @@ const ProductsTab = () => {
                       </div>
                     </div>
                   </div>
-
                   {discountPercentage > 0 && (
                     <div className="text-right">
                       <div className="text-sm text-gray-500">
@@ -1557,12 +1728,10 @@ const ProductsTab = () => {
                           const gstPercentage = Number(
                             selectedProduct.gst_percentage || 0
                           );
-
                           const productCost =
                             100 + gstPercentage !== 0
                               ? (finalProductCost * 100) / (100 + gstPercentage)
                               : 0;
-
                           const totalDiscount =
                             ((productCost * discountPercentage) / 100) *
                             quantity;
@@ -1571,26 +1740,26 @@ const ProductsTab = () => {
                       </div>
                     </div>
                   )}
-
                   <div className="text-right">
-                    <div className="text-sm text-gray-500">
-                      Total Price(including GST)
-                    </div>
+                    <div className="text-sm text-gray-500">Total Price</div>
                     <div className="text-xl font-bold text-[#295A47]">
                       ₹
                       {(() => {
-                        const finalProductCost = Number(selectedProduct.final_product_cost || 0);
-                        const gstPercentage = Number(selectedProduct.gst_percentage || 0);
-
-                        const productCost = (100 + gstPercentage) !== 0
-                          ? (finalProductCost * 100) / (100 + gstPercentage)
-                          : 0;
-
-                        const discountAmount = (productCost * discountPercentage) / 100;
+                        const finalProductCost = Number(
+                          selectedProduct.final_product_cost || 0
+                        );
+                        const gstPercentage = Number(
+                          selectedProduct.gst_percentage || 0
+                        );
+                        const productCost =
+                          100 + gstPercentage !== 0
+                            ? (finalProductCost * 100) / (100 + gstPercentage)
+                            : 0;
+                        const discountAmount =
+                          (productCost * discountPercentage) / 100;
                         const gstAmount = productCost * (gstPercentage / 100);
-
-                        const finalPrice = productCost - discountAmount + gstAmount;
-
+                        const finalPrice =
+                          productCost - discountAmount + gstAmount;
                         const transportCost =
                           selectedProduct.transport_exclude === 1
                             ? extraTransportCost
@@ -1601,7 +1770,6 @@ const ProductsTab = () => {
                       })()}
                     </div>
                   </div>
-
                   {/* Action Buttons */}
                   <div className="flex flex-col sm:flex-row gap-3 sm:space-x-4 sm:gap-0">
                     <button
@@ -1618,7 +1786,7 @@ const ProductsTab = () => {
           </div>
         </div>
       )}
-
+      {/* Cart Modal */}
       <CartModal
         showCart={showCart}
         setShowCart={setShowCart}
@@ -1650,8 +1818,7 @@ const ProductsTab = () => {
         generateInvoice={generateInvoice}
         showBuyModal={showBuyModal}
       />
-
-      {/* Full Image Modal */}
+      {/* Full Image Modal for Product Details */}
       {showFullImage && selectedProduct && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 pb-15">
           <div className="relative max-w-4xl max-h-[90vh]">
@@ -1672,8 +1839,15 @@ const ProductsTab = () => {
           </div>
         </div>
       )}
+      {/* Kayapalat Chat Modal */}
+      {selectedProduct && (
+        <BusinessBrandKayapalatChatModal
+          isOpen={chatModalOpen}
+          onClose={() => setChatModalOpen(false)}
+          productId={selectedProduct.product_id}
+        />
+      )}
     </div>
   );
 };
-
 export default ProductsTab;

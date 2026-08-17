@@ -64,10 +64,30 @@ export async function GET(
     }
 
     const [payments] = await executeQuery(`
-      SELECT id, 'payment' as type, amount, payment_method, transaction_proof_path, status, created_at
-      FROM interior_payment_transactions
-      WHERE project_id = ?
-      ORDER BY created_at DESC
+SELECT
+  pt.id,
+  'payment' as type,
+  pt.project_id,
+  pt.amount,
+  pt.payment_method,
+  pt.transaction_proof_path,
+  pt.status,
+  pt.created_at,
+
+  ip.project_name,
+  ip.client_id,
+
+  u.name AS customer_name,
+  u.phone AS customer_phone
+
+FROM interior_payment_transactions pt
+INNER JOIN interior_projects ip
+  ON pt.project_id = ip.id
+INNER JOIN users_kp_db u
+  ON ip.client_id = u.user_id
+
+WHERE pt.project_id = ?
+ORDER BY pt.created_at DESC
     `, [projectId]);
 
     const [adjustments] = await executeQuery(`

@@ -67,6 +67,7 @@ interface Order {
   due?: number;
   gst: string;
   gst_amount: number;
+  composite_gst_scheme: number;
   images: Array<{
     image_id: number;
     image_url: string;
@@ -121,7 +122,8 @@ const OrdersTab = () => {
   const [filterOrderId, setFilterOrderId] = useState<string>("");
   const [filterClientName, setFilterClientName] = useState<string>("");
   const [filterDeliveryDate, setFilterDeliveryDate] = useState<string>("");
-  const [onlyShowNotSetDelivery, setOnlyShowNotSetDelivery] = useState<boolean>(false);
+  const [onlyShowNotSetDelivery, setOnlyShowNotSetDelivery] =
+    useState<boolean>(false);
   const [filterBilledDate, setFilterBilledDate] = useState<string>("");
   const [filterAgentId, setFilterAgentId] = useState<string>("");
   const [selectedImageIndex, setSelectedImageIndex] = useState<number>(0);
@@ -130,7 +132,9 @@ const OrdersTab = () => {
   const [uploadedImages, setUploadedImages] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [defectiveImages, setDefectiveImages] = useState<DefectiveImage[]>([]);
-  const [fullScreenImage, setFullScreenImage] = useState<DefectiveImage | null>(null);
+  const [fullScreenImage, setFullScreenImage] = useState<DefectiveImage | null>(
+    null
+  );
 
   const handleDeleteDefectiveImage = async (imageId: number) => {
     if (!window.confirm("Are you sure you want to delete this image?")) {
@@ -138,19 +142,22 @@ const OrdersTab = () => {
     }
 
     try {
-      const response = await fetch('/api/sales-admin/defective-product-images', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: imageId }),
-      });
+      const response = await fetch(
+        "/api/sales-admin/defective-product-images",
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: imageId }),
+        }
+      );
 
       if (response.ok) {
         toast.success("Image deleted successfully");
-        setDefectiveImages(prev => prev.filter(img => img.id !== imageId));
+        setDefectiveImages((prev) => prev.filter((img) => img.id !== imageId));
         return true;
       } else {
         const errorData = await response.json();
-        toast.error(`Delete failed: ${errorData.error || 'Unknown error'}`);
+        toast.error(`Delete failed: ${errorData.error || "Unknown error"}`);
         return false;
       }
     } catch (error) {
@@ -204,7 +211,9 @@ const OrdersTab = () => {
 
   const fetchDefectiveImages = async (orderId: string) => {
     try {
-      const res = await fetch(`/api/sales-admin/defective-product-images?order_id=${orderId}`);
+      const res = await fetch(
+        `/api/sales-admin/defective-product-images?order_id=${orderId}`
+      );
       if (res.ok) {
         const data = await res.json();
         setDefectiveImages(data.images || []);
@@ -239,12 +248,12 @@ const OrdersTab = () => {
 
   const handleStatusChange = async (orderId: string, newStatus: string) => {
     try {
-      const response = await fetch('/api/sales-admin/orders', {
-        method: 'PUT',
+      const response = await fetch("/api/sales-admin/orders", {
+        method: "PUT",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
-        credentials: 'include',
+        credentials: "include",
         body: JSON.stringify({
           order_id: orderId,
           booking_status: newStatus,
@@ -259,37 +268,38 @@ const OrdersTab = () => {
               : order
           )
         );
-        toast.success('Status updated successfully');
+        toast.success("Status updated successfully");
       } else {
-        toast.error('Failed to update status');
+        toast.error("Failed to update status");
       }
     } catch (error) {
-      console.error('Error updating status:', error);
-      toast.error('Failed to update status');
+      console.error("Error updating status:", error);
+      toast.error("Failed to update status");
     }
   };
 
   const handleActionChange = async (orderId: string, newAction: string) => {
     // Prevent unnecessary API calls if the value hasn't changed
-    const originalAction = orders.find(o => o.order_id === orderId)?.action || '';
+    const originalAction =
+      orders.find((o) => o.order_id === orderId)?.action || "";
     if (newAction === originalAction) {
       return;
     }
 
     // Get the current booking_status for the order
-    const currentOrder = orders.find(o => o.order_id === orderId);
+    const currentOrder = orders.find((o) => o.order_id === orderId);
     if (!currentOrder) {
-      toast.error('Order not found');
+      toast.error("Order not found");
       return;
     }
 
     try {
-      const response = await fetch('/api/sales-admin/orders', {
-        method: 'PUT',
+      const response = await fetch("/api/sales-admin/orders", {
+        method: "PUT",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
-        credentials: 'include',
+        credentials: "include",
         body: JSON.stringify({
           order_id: orderId,
           booking_status: currentOrder.booking_status,
@@ -300,9 +310,7 @@ const OrdersTab = () => {
       if (response.ok) {
         // Update the main orders list
         const updatedOrders = orders.map((order) =>
-          order.order_id === orderId
-            ? { ...order, action: newAction }
-            : order
+          order.order_id === orderId ? { ...order, action: newAction } : order
         );
         setOrders(updatedOrders);
 
@@ -311,13 +319,13 @@ const OrdersTab = () => {
           setSelectedOrder({ ...selectedOrder, action: newAction });
         }
 
-        toast.success('Action updated successfully');
+        toast.success("Action updated successfully");
       } else {
-        toast.error('Failed to update action');
+        toast.error("Failed to update action");
       }
     } catch (error) {
-      console.error('Error updating action:', error);
-      toast.error('Failed to update action');
+      console.error("Error updating action:", error);
+      toast.error("Failed to update action");
     }
   };
 
@@ -334,10 +342,10 @@ const OrdersTab = () => {
     setIsUploading(true);
 
     const formData = new FormData();
-    formData.append('order_id', selectedOrder.order_id);
-    formData.append('product_id', String(selectedOrder.product_id));
-    uploadedImages.forEach(file => {
-      formData.append('images', file);
+    formData.append("order_id", selectedOrder.order_id);
+    formData.append("product_id", String(selectedOrder.product_id));
+    uploadedImages.forEach((file) => {
+      formData.append("images", file);
     });
 
     console.log("Attempting to upload damage proof...");
@@ -346,10 +354,13 @@ const OrdersTab = () => {
     console.log("FormData created.");
 
     try {
-      const response = await fetch('/api/sales-admin/defective-product-images', {
-        method: 'POST',
-        body: formData,
-      });
+      const response = await fetch(
+        "/api/sales-admin/defective-product-images",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
       console.log("Upload response status:", response.status);
 
       if (response.ok) {
@@ -362,7 +373,7 @@ const OrdersTab = () => {
         }
       } else {
         const errorData = await response.json();
-        toast.error(`Upload failed: ${errorData.error || 'Unknown error'}`);
+        toast.error(`Upload failed: ${errorData.error || "Unknown error"}`);
       }
     } catch (error) {
       console.error("Error uploading proof:", error);
@@ -404,10 +415,16 @@ const OrdersTab = () => {
 
   const generateInvoice = (order: Order) => {
     // Find all orders with the same o_id
-    const groupOrders = orders.filter(o => o.o_id === order.o_id);
+    const groupOrders = orders.filter((o) => o.o_id === order.o_id);
 
     // Find the corresponding bought product for GSTIN
-    const boughtProduct = boughtProducts.find(bp => bp.o_id === order.o_id);
+    const boughtProduct = boughtProducts.find((bp) => bp.o_id === order.o_id);
+
+    // Check composite GST scheme from the order's dealer
+    const dealerCompositeGST = Number(order.composite_gst_scheme) === 1;
+    const dealerCompanyName = order.company_name || "KAYAPALAT";
+    const dealerAddress = order.address || null;
+    const dealerPhone = order.phone || null;
 
     const doc = new jsPDF();
 
@@ -435,32 +452,48 @@ const OrdersTab = () => {
     doc.setFontSize(22);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(41, 90, 71); // #295A47
-    doc.text("KAYAPALAT", PAGE_WIDTH / 2, 18, { align: "center" });
-
-    doc.setFontSize(11);
-    doc.setFont("helvetica", "normal");
-    doc.text("Professional Interior Solutions", PAGE_WIDTH / 2, 26, {
-      align: "center",
-    });
-
-    doc.setFontSize(9);
     doc.text(
-      "1160 Chadpur Poleghat, Mouza 80, Sonarpur, Kolkata - 700145, WB, India",
+      dealerCompositeGST ? dealerCompanyName.toUpperCase() : "KAYAPALAT",
       PAGE_WIDTH / 2,
-      32,
+      18,
       { align: "center" }
     );
 
-    doc.text("Phone/WhatsApp: 602-602-602-6", PAGE_WIDTH / 2, 38, {
-      align: "center",
-    });
+    if (dealerCompositeGST) {
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      if (dealerAddress) {
+        doc.text(dealerAddress, PAGE_WIDTH / 2, 26, { align: "center" });
+      }
+      if (dealerPhone) {
+        doc.text(`Phone/WhatsApp: ${dealerPhone}`, PAGE_WIDTH / 2, 32, {
+          align: "center",
+        });
+      }
+    } else {
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "normal");
+      doc.text("Professional Interior Solutions", PAGE_WIDTH / 2, 26, {
+        align: "center",
+      });
+      doc.setFontSize(9);
+      doc.text(
+        "1160 Chadpur Poleghat, Mouza 80, Sonarpur, Kolkata - 700145, WB, India",
+        PAGE_WIDTH / 2,
+        32,
+        { align: "center" }
+      );
+      doc.text("Phone/WhatsApp: 602-602-602-6", PAGE_WIDTH / 2, 38, {
+        align: "center",
+      });
+    }
 
     // =====================
     // INVOICE NUMBER + DATE (SAME LINE)
     // =====================
     const invoiceNumber = `INV-${order.o_id}`;
 
-    const invoiceDate = new Date().toLocaleString();
+    const invoiceDate = new Date().toLocaleString("en-IN");
 
     doc.setFontSize(10);
     doc.setTextColor(0);
@@ -488,19 +521,15 @@ const OrdersTab = () => {
       doc.text(`Transaction ID: ${order.transaction_id || "N/A"}`, 14, 76);
     }
 
-    const totalAmount = groupOrders.reduce((sum, groupOrder) => sum + (Number(groupOrder.discounted_ammount || 0) ), 0) + (Number(order.extra_transport_cost) || 0);
+    const totalAmount =
+      groupOrders.reduce(
+        (sum, groupOrder) => sum + Number(groupOrder.discounted_ammount || 0),
+        0
+      ) + (Number(order.extra_transport_cost) || 0);
 
-    doc.text(
-      `Total Amount: Rs. ${totalAmount.toLocaleString()}`,
-      14,
-      84
-    );
+    doc.text(`Total Amount: Rs. ${totalAmount.toLocaleString()}`, 14, 84);
 
-    doc.text(
-      `Advance: Rs. ${(order.advance || 0).toLocaleString()}`,
-      14,
-      92
-    );
+    doc.text(`Advance: Rs. ${(order.advance || 0).toLocaleString()}`, 14, 92);
     doc.text(`Due: Rs. ${(order.due || 0).toLocaleString()}`, 14, 100);
 
     // =====================
@@ -512,39 +541,87 @@ const OrdersTab = () => {
     doc.text("Bill To", rightX, 60);
 
     doc.setFont("helvetica", "normal");
-    doc.text(`${boughtProduct?.client_name || order.client_name || "N/A"}`, rightX, 68);
+    doc.text(
+      `${boughtProduct?.client_name || order.client_name || "N/A"}`,
+      rightX,
+      68
+    );
 
-    doc.text(`Phone: ${boughtProduct?.client_phone || order.client_phone || "N/A"}`, rightX, 76);
-    doc.text(`GSTIN: ${boughtProduct?.client_gstin || order.client_gstin || "N/A"}`, rightX, 84);
+    doc.text(
+      `Phone: ${boughtProduct?.client_phone || order.client_phone || "N/A"}`,
+      rightX,
+      76
+    );
+    doc.text(
+      `GSTIN: ${boughtProduct?.client_gstin || order.client_gstin || "N/A"}`,
+      rightX,
+      84
+    );
 
     doc.text(`Representative: ${session?.user?.name || "N/A"}`, rightX, 92);
 
     // =====================
     // PRODUCT TABLE
     // =====================
-    const tableColumns = [
-      "S.No",
-      "Product",
-      "Company",
-      "Unit Price",
-      "Discount",
-      "GST",
-      "Quantity",
-      "Transport Cost",
-      "Total",
-    ];
+    const tableColumns = dealerCompositeGST
+      ? [
+        "S.No",
+        "Product",
+        "Company",
+        "Unit Price",
+        "Discount",
+        "Quantity",
+        "Transport Cost",
+        "Total",
+      ]
+      : [
+        "S.No",
+        "Product",
+        "Company",
+        "Unit Price",
+        "Discount",
+        "GST",
+        "Quantity",
+        "Transport Cost",
+        "Total",
+      ];
 
-    const tableRows = groupOrders.map((groupOrder, index) => [
-      index + 1,
-      groupOrder.product_name,
-      groupOrder.company_name,
-      `Rs. ${groupOrder.product_mrp.toLocaleString()}`,
-      groupOrder.discount_percentage > 0 ? `${groupOrder.discount_percentage}% - ${groupOrder.discount.toLocaleString()}` : "-",
-      groupOrder.gst ? `${groupOrder.gst}% - ${groupOrder.gst_amount.toLocaleString()}` : "-",
-      groupOrder.quantity,
-      `Rs. ${(Number(groupOrder.transport_exclude || 0)).toLocaleString()}`,
-      `Rs. ${(Number(groupOrder.discounted_ammount || 0)).toLocaleString()}`,
-    ]);
+    const tableRows = groupOrders.map((groupOrder, index) =>
+      dealerCompositeGST
+        ? [
+          index + 1,
+          groupOrder.product_name,
+          groupOrder.company_name,
+          `Rs. ${groupOrder.product_mrp.toLocaleString()}`,
+          groupOrder.discount_percentage > 0
+            ? `${groupOrder.discount_percentage
+            }% - ${groupOrder.discount.toLocaleString()}`
+            : "-",
+          groupOrder.quantity,
+          `Rs. ${Number(groupOrder.transport_exclude || 0).toLocaleString()}`,
+          `Rs. ${Number(
+            groupOrder.discounted_ammount || 0
+          ).toLocaleString()}`,
+        ]
+        : [
+          index + 1,
+          groupOrder.product_name,
+          groupOrder.company_name,
+          `Rs. ${groupOrder.product_mrp.toLocaleString()}`,
+          groupOrder.discount_percentage > 0
+            ? `${groupOrder.discount_percentage
+            }% - ${groupOrder.discount.toLocaleString()}`
+            : "-",
+          groupOrder.gst
+            ? `${groupOrder.gst}% - ${groupOrder.gst_amount.toLocaleString()}`
+            : "-",
+          groupOrder.quantity,
+          `Rs. ${Number(groupOrder.transport_exclude || 0).toLocaleString()}`,
+          `Rs. ${Number(
+            groupOrder.discounted_ammount || 0
+          ).toLocaleString()}`,
+        ]
+    );
 
     autoTable(doc, {
       head: [tableColumns],
@@ -564,37 +641,36 @@ const OrdersTab = () => {
         // PAGE NUMBER
         const pageNo = doc.getNumberOfPages();
         doc.setFontSize(8);
-        doc.text(
-          `Page ${pageNo}`,
-          PAGE_WIDTH - 14,
-          PAGE_HEIGHT - 10,
-          { align: "right" }
-        );
+        doc.text(`Page ${pageNo}`, PAGE_WIDTH - 14, PAGE_HEIGHT - 10, {
+          align: "right",
+        });
       },
     });
 
     // =====================
     // SUMMARY TABLE
     // =====================
-    const totalProductCost = groupOrders.reduce((sum, groupOrder) => sum + groupOrder.product_mrp * groupOrder.quantity, 0);
-    const totalDiscount = groupOrders.reduce((sum, groupOrder) => sum + groupOrder.discount * groupOrder.quantity, 0);
-    const totalGSTAmount = groupOrders.reduce((sum, groupOrder) => sum + groupOrder.gst_amount * groupOrder.quantity, 0);
+    const totalProductCost = groupOrders.reduce(
+      (sum, groupOrder) => sum + groupOrder.product_mrp * groupOrder.quantity,
+      0
+    );
+    const totalDiscount = groupOrders.reduce(
+      (sum, groupOrder) => sum + groupOrder.discount * groupOrder.quantity,
+      0
+    );
+    const totalGSTAmount = groupOrders.reduce(
+      (sum, groupOrder) => sum + groupOrder.gst_amount * groupOrder.quantity,
+      0
+    );
 
     autoTable(doc, {
       head: [["Description", "Amount"]],
       body: [
-        [
-          "Total Product Cost",
-          `Rs. ${totalProductCost.toLocaleString()}`,
-        ],
-        [
-          "Total Discount",
-          `Rs. ${totalDiscount.toLocaleString()}`,
-        ],
-        [
-          "Total GST",
-          `Rs. ${totalGSTAmount.toLocaleString()}`,
-        ],
+        ["Total Product Cost", `Rs. ${totalProductCost.toLocaleString()}`],
+        ["Total Discount", `Rs. ${totalDiscount.toLocaleString()}`],
+        ...(!dealerCompositeGST
+          ? [["Total GST", `Rs. ${totalGSTAmount.toLocaleString()}`]]
+          : []),
         [
           "Extra Transportation Cost",
           `Rs. ${(order.extra_transport_cost || 0).toLocaleString()}`,
@@ -635,12 +711,31 @@ const OrdersTab = () => {
       { align: "center" }
     );
 
-    doc.text(
-      `Generated on ${new Date().toLocaleString()}`,
-      PAGE_WIDTH / 2,
-      finalY + 16,
-      { align: "center" }
-    );
+    if (dealerCompositeGST) {
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(180, 0, 0);
+      doc.text(
+        "Declaration: Composition taxable person, not eligible to collect tax on supplies",
+        PAGE_WIDTH / 2,
+        finalY + 18,
+        { align: "center" }
+      );
+      doc.setTextColor(0);
+      doc.setFont("helvetica", "normal");
+      doc.text(
+        `Generated on ${new Date().toLocaleString("en-IN")}`,
+        PAGE_WIDTH / 2,
+        finalY + 28,
+        { align: "center" }
+      );
+    } else {
+      doc.text(
+        `Generated on ${new Date().toLocaleString("en-IN")}`,
+        PAGE_WIDTH / 2,
+        finalY + 16,
+        { align: "center" }
+      );
+    }
 
     // Save the PDF
     doc.save(`Invoice_${invoiceNumber}.pdf`);
@@ -648,40 +743,69 @@ const OrdersTab = () => {
   };
 
   // Filter orders based on booking_status, client_name, order_id, delivery_date, and billed_date
-  const filteredOrders = Array.isArray(orders) ? orders.filter((order) => {
-    const matchesStatus =
-      filterStatus === "All" || order.booking_status === filterStatus;
-    const matchesClientName =
-      filterClientName === "" ||
-      (order.client_name && order.client_name.toLowerCase().includes(filterClientName.toLowerCase()));
-    const matchesOrderId =
-      filterOrderId === "" ||
-      order.o_id.toLowerCase().includes(filterOrderId.toLowerCase());
-    const matchesDeliveryDate =
-      onlyShowNotSetDelivery
+  const filteredOrders = Array.isArray(orders)
+    ? orders.filter((order) => {
+      const matchesStatus =
+        filterStatus === "All" || order.booking_status === filterStatus;
+      const matchesClientName =
+        filterClientName === "" ||
+        (order.client_name &&
+          order.client_name
+            .toLowerCase()
+            .includes(filterClientName.toLowerCase()));
+      const matchesOrderId =
+        filterOrderId === "" ||
+        order.o_id.toLowerCase().includes(filterOrderId.toLowerCase());
+      const matchesDeliveryDate = onlyShowNotSetDelivery
         ? order.delivery_date === null || order.delivery_date === ""
         : filterDeliveryDate === "" ||
-          (order.delivery_date && new Date(order.delivery_date).toISOString().split('T')[0] === filterDeliveryDate);
-    const matchesBilledDate =
-      filterBilledDate === "" ||
-      (order.billed_date && new Date(order.billed_date).toISOString().split('T')[0] === filterBilledDate);
-    const matchesAgentId =
-      filterAgentId === "" ||
-      (order.agent_id && order.agent_id.toLowerCase().includes(filterAgentId.toLowerCase()));
-    return matchesStatus && matchesClientName && matchesOrderId && matchesDeliveryDate && matchesBilledDate && matchesAgentId;
-  }) : [];
-
+        (order.delivery_date &&
+          new Date(order.delivery_date).toISOString().split("T")[0] ===
+          filterDeliveryDate);
+      const matchesBilledDate =
+        filterBilledDate === "" ||
+        (order.billed_date &&
+          new Date(order.billed_date).toISOString().split("T")[0] ===
+          filterBilledDate);
+      const matchesAgentId =
+        filterAgentId === "" ||
+        (order.agent_id &&
+          order.agent_id.toLowerCase().includes(filterAgentId.toLowerCase()));
+      return (
+        matchesStatus &&
+        matchesClientName &&
+        matchesOrderId &&
+        matchesDeliveryDate &&
+        matchesBilledDate &&
+        matchesAgentId
+      );
+    })
+    : [];
   // Get unique statuses for filter
   const statuses = [
     "All",
-    ...Array.from(new Set((Array.isArray(orders) ? orders : []).map((order) => order.booking_status))),
+    ...Array.from(
+      new Set(
+        (Array.isArray(orders) ? orders : []).map(
+          (order) => order.booking_status
+        )
+      )
+    ),
   ];
-
   // Get unique delivery dates for filter
   const deliveryDates = [
     "All",
     "Not Set",
-    ...Array.from(new Set((Array.isArray(orders) ? orders : []).filter(order => order.delivery_date).map((order) => new Date(order.delivery_date!).toISOString().split('T')[0]))),
+    ...Array.from(
+      new Set(
+        (Array.isArray(orders) ? orders : [])
+          .filter((order) => order.delivery_date)
+          .map(
+            (order) =>
+              new Date(order.delivery_date!).toISOString().split("T")[0]
+          )
+      )
+    ),
   ];
 
   if (loading) {
@@ -706,11 +830,17 @@ const OrdersTab = () => {
                 <ShoppingCart className="w-6 h-6 md:w-8 md:h-8 lg:w-10 lg:h-10" />
                 Order Management
               </h1>
-              <p className="text-green-100 mt-2 text-sm md:text-base lg:text-lg">Track, manage and fulfill your customer orders efficiently.</p>
+              <p className="text-green-100 mt-2 text-sm md:text-base lg:text-lg">
+                Track, manage and fulfill your customer orders efficiently.
+              </p>
             </div>
             <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20 min-w-[120px] md:min-w-[140px] text-center transform hover:scale-105 transition-transform duration-300">
-              <p className="text-2xl md:text-3xl lg:text-4xl font-bold text-white">{filteredOrders.length}</p>
-              <p className="text-green-100 font-medium text-xs md:text-sm">Filtered Orders</p>
+              <p className="text-2xl md:text-3xl lg:text-4xl font-bold text-white">
+                {filteredOrders.length}
+              </p>
+              <p className="text-green-100 font-medium text-xs md:text-sm">
+                Filtered Orders
+              </p>
             </div>
           </div>
         </div>
@@ -729,8 +859,12 @@ const OrdersTab = () => {
                   <Filter className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-lg md:text-xl font-bold text-gray-800">Advanced Filters</h3>
-                  <p className="text-sm text-gray-600">Refine your order search with precision</p>
+                  <h3 className="text-lg md:text-xl font-bold text-gray-800">
+                    Advanced Filters
+                  </h3>
+                  <p className="text-sm text-gray-600">
+                    Refine your order search with precision
+                  </p>
                 </div>
               </div>
               <div className="hidden md:flex items-center space-x-2 text-sm text-gray-500">
@@ -785,7 +919,19 @@ const OrdersTab = () => {
                   ))}
                 </select>
                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                  <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                  <svg
+                    className="h-4 w-4 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M19 9l-7 7-7-7"
+                    ></path>
+                  </svg>
                 </div>
               </div>
             </div>
@@ -803,17 +949,24 @@ const OrdersTab = () => {
                     onChange={(e) => setFilterDeliveryDate(e.target.value)}
                     className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl leading-5 bg-white focus:outline-none focus:ring-2 focus:ring-[#295A47]/20 focus:border-[#295A47] transition-all duration-200 text-sm"
                   />
-                  <label className="absolute -top-2 left-4 bg-gray-50 px-1 text-xs font-medium text-gray-600">Delivery Date</label>
+                  <label className="absolute -top-2 left-4 bg-gray-50 px-1 text-xs font-medium text-gray-600">
+                    Delivery Date
+                  </label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <input
                     type="checkbox"
                     id="onlyShowNotSetDelivery"
                     checked={onlyShowNotSetDelivery}
-                    onChange={(e) => setOnlyShowNotSetDelivery(e.target.checked)}
+                    onChange={(e) =>
+                      setOnlyShowNotSetDelivery(e.target.checked)
+                    }
                     className="h-4 w-4 text-[#295A47] focus:ring-[#295A47] border-gray-300 rounded"
                   />
-                  <label htmlFor="onlyShowNotSetDelivery" className="text-sm text-gray-700">
+                  <label
+                    htmlFor="onlyShowNotSetDelivery"
+                    className="text-sm text-gray-700"
+                  >
                     Only show orders with no delivery date set
                   </label>
                 </div>
@@ -829,7 +982,9 @@ const OrdersTab = () => {
                   onChange={(e) => setFilterAgentId(e.target.value)}
                   className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl leading-5 bg-white focus:outline-none focus:ring-2 focus:ring-[#295A47]/20 focus:border-[#295A47] transition-all duration-200 text-sm"
                 />
-                <label className="absolute -top-2 left-4 bg-gray-50 px-1 text-xs font-medium text-gray-600">RepresentativeID</label>
+                <label className="absolute -top-2 left-4 bg-gray-50 px-1 text-xs font-medium text-gray-600">
+                  RepresentativeID
+                </label>
               </div>
 
               <div className="relative group">
@@ -842,7 +997,9 @@ const OrdersTab = () => {
                   onChange={(e) => setFilterBilledDate(e.target.value)}
                   className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl leading-5 bg-white focus:outline-none focus:ring-2 focus:ring-[#295A47]/20 focus:border-[#295A47] transition-all duration-200 text-sm"
                 />
-                <label className="absolute -top-2 left-4 bg-gray-50 px-1 text-xs font-medium text-gray-600">Billed Date</label>
+                <label className="absolute -top-2 left-4 bg-gray-50 px-1 text-xs font-medium text-gray-600">
+                  Billed Date
+                </label>
               </div>
             </div>
           </div>
@@ -946,25 +1103,33 @@ const OrdersTab = () => {
 
               <div className="space-y-2 mb-4">
                 <div className="flex justify-between items-center">
-                  <span className="text-xs md:text-sm text-gray-500">Order ID:</span>
+                  <span className="text-xs md:text-sm text-gray-500">
+                    Order ID:
+                  </span>
                   <span className="font-medium text-gray-700 text-xs md:text-sm">
                     {order.o_id}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-xs md:text-sm text-gray-500">Representative ID:</span>
+                  <span className="text-xs md:text-sm text-gray-500">
+                    Representative ID:
+                  </span>
                   <span className="font-medium text-gray-700 text-xs md:text-sm">
                     {order.agent_id || "N/A"}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-xs md:text-sm text-gray-500">Quantity:</span>
+                  <span className="text-xs md:text-sm text-gray-500">
+                    Quantity:
+                  </span>
                   <span className="font-medium text-gray-700 text-xs md:text-sm">
                     {order.quantity}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-xs md:text-sm text-gray-500">Total Amount:</span>
+                  <span className="text-xs md:text-sm text-gray-500">
+                    Total Amount:
+                  </span>
                   <span className="font-bold text-green-600 text-xs md:text-sm">
                     ₹
                     {(
@@ -975,22 +1140,30 @@ const OrdersTab = () => {
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-xs md:text-sm text-gray-500">Client Name:</span>
+                  <span className="text-xs md:text-sm text-gray-500">
+                    Client Name:
+                  </span>
                   <span className="font-medium text-gray-700 text-xs md:text-sm">
                     {order.client_name || "N/A"}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-xs md:text-sm text-gray-500">Order Date:</span>
+                  <span className="text-xs md:text-sm text-gray-500">
+                    Order Date:
+                  </span>
                   <span className="font-medium text-gray-700 text-xs md:text-sm">
-                    {new Date(order.created_at).toLocaleDateString()}
+                    {new Date(order.created_at).toLocaleDateString("en-IN")}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-xs md:text-sm text-gray-500">Delivery Date:</span>
+                  <span className="text-xs md:text-sm text-gray-500">
+                    Delivery Date:
+                  </span>
                   <span className="font-medium text-gray-700 text-xs md:text-sm">
                     {order.delivery_date
-                      ? new Date(order.delivery_date).toLocaleDateString()
+                      ? new Date(order.delivery_date).toLocaleDateString(
+                        "en-IN"
+                      )
                       : "Not Set"}
                   </span>
                 </div>
@@ -1048,7 +1221,9 @@ const OrdersTab = () => {
                   <h2 className="text-xl md:text-2xl font-bold text-[#295A47]">
                     {selectedOrder.product_name}
                   </h2>
-                  <p className="text-gray-600 text-sm md:text-base">Order {selectedOrder.o_id}</p>
+                  <p className="text-gray-600 text-sm md:text-base">
+                    Order {selectedOrder.o_id}
+                  </p>
                 </div>
                 <button
                   onClick={closeModal}
@@ -1096,11 +1271,10 @@ const OrdersTab = () => {
                           .map((image, index) => (
                             <div
                               key={image.image_id}
-                              className={`relative aspect-square bg-gray-100 rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity ${
-                                index === selectedImageIndex
+                              className={`relative aspect-square bg-gray-100 rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity ${index === selectedImageIndex
                                   ? "ring-2 ring-[#295A47]"
                                   : ""
-                              }`}
+                                }`}
                               onClick={() => setSelectedImageIndex(index)}
                             >
                               <img
@@ -1137,13 +1311,18 @@ const OrdersTab = () => {
                       </h4>
                       <div className="flex flex-wrap gap-2">
                         {defectiveImages.map((img) => (
-                          <div key={img.id} className="relative group w-20 h-20 border border-red-200 rounded-lg overflow-hidden">
+                          <div
+                            key={img.id}
+                            className="relative group w-20 h-20 border border-red-200 rounded-lg overflow-hidden"
+                          >
                             <img
                               src={img.image_url}
                               alt={img.image_alt_text || "Defective product"}
                               className="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
                               onClick={() => setFullScreenImage(img)}
-                              onError={(e) => { e.currentTarget.src = "/placeholder_person.jpg"; }}
+                              onError={(e) => {
+                                e.currentTarget.src = "/placeholder_person.jpg";
+                              }}
                             />
                             <button
                               onClick={(e) => {
@@ -1196,8 +1375,8 @@ const OrdersTab = () => {
                         <span className="font-medium">
                           {selectedOrder.billed_date
                             ? new Date(
-                                selectedOrder.billed_date
-                              ).toLocaleDateString()
+                              selectedOrder.billed_date
+                            ).toLocaleDateString()
                             : "N/A"}
                         </span>
                       </div>
@@ -1402,8 +1581,13 @@ const OrdersTab = () => {
                     </h3>
                     <input
                       type="text"
-                      defaultValue={selectedOrder.action || ''}
-                      onBlur={(e) => handleActionChange(selectedOrder.order_id, e.target.value)}
+                      defaultValue={selectedOrder.action || ""}
+                      onBlur={(e) =>
+                        handleActionChange(
+                          selectedOrder.order_id,
+                          e.target.value
+                        )
+                      }
                       className="block w-full px-3 py-1.5 border border-gray-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#295A47]/20 focus:border-[#295A47] transition-all duration-200"
                       placeholder="Enter action..."
                     />
@@ -1420,7 +1604,9 @@ const OrdersTab = () => {
         <div className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center z-[70] p-4">
           <div className="bg-white rounded-lg max-w-md w-full p-6 shadow-xl">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold text-[#295A47]">Upload Damage Proof</h3>
+              <h3 className="text-xl font-bold text-[#295A47]">
+                Upload Damage Proof
+              </h3>
               <button
                 onClick={() => {
                   setShowUploadModal(false);
@@ -1431,7 +1617,7 @@ const OrdersTab = () => {
                 <X className="w-6 h-6" />
               </button>
             </div>
-            
+
             <div className="space-y-4">
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-[#295A47] transition-colors bg-gray-50">
                 <input
@@ -1451,24 +1637,37 @@ const OrdersTab = () => {
                   className="cursor-pointer flex flex-col items-center justify-center w-full h-full"
                 >
                   <Upload className="w-12 h-12 text-gray-400 mb-2" />
-                  <span className="text-sm text-gray-600 font-medium">Click to upload images</span>
-                  <span className="text-xs text-gray-500 mt-1">Supports: JPG, PNG, JPEG</span>
+                  <span className="text-sm text-gray-600 font-medium">
+                    Click to upload images
+                  </span>
+                  <span className="text-xs text-gray-500 mt-1">
+                    Supports: JPG, PNG, JPEG
+                  </span>
                 </label>
               </div>
 
               {uploadedImages.length > 0 && (
                 <div className="space-y-2">
-                  <p className="text-sm font-medium text-gray-700">Selected Files ({uploadedImages.length}):</p>
+                  <p className="text-sm font-medium text-gray-700">
+                    Selected Files ({uploadedImages.length}):
+                  </p>
                   <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto p-1">
                     {uploadedImages.map((file, index) => (
-                      <div key={index} className="relative w-16 h-16 border border-gray-200 rounded-lg overflow-hidden shadow-sm group">
+                      <div
+                        key={index}
+                        className="relative w-16 h-16 border border-gray-200 rounded-lg overflow-hidden shadow-sm group"
+                      >
                         <img
                           src={URL.createObjectURL(file)}
                           alt="preview"
                           className="w-full h-full object-cover"
                         />
-                        <button 
-                          onClick={() => setUploadedImages(uploadedImages.filter((_, i) => i !== index))}
+                        <button
+                          onClick={() =>
+                            setUploadedImages(
+                              uploadedImages.filter((_, i) => i !== index)
+                            )
+                          }
                           className="absolute top-0 right-0 bg-red-500 text-white p-0.5 rounded-bl opacity-0 group-hover:opacity-100 transition-opacity"
                         >
                           <X className="w-3 h-3" />
@@ -1482,16 +1681,23 @@ const OrdersTab = () => {
               {/* Previously Uploaded Defective Images */}
               {defectiveImages.length > 0 && (
                 <div className="space-y-2 pt-4 border-t border-gray-100">
-                  <p className="text-sm font-medium text-gray-700">Previously Uploaded Proofs:</p>
+                  <p className="text-sm font-medium text-gray-700">
+                    Previously Uploaded Proofs:
+                  </p>
                   <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto p-1">
                     {defectiveImages.map((img) => (
-                      <div key={img.id} className="relative group w-16 h-16 border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                      <div
+                        key={img.id}
+                        className="relative group w-16 h-16 border border-gray-200 rounded-lg overflow-hidden shadow-sm"
+                      >
                         <img
                           src={img.image_url}
                           alt={img.image_alt_text || "Defective proof"}
                           className="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
                           onClick={() => setFullScreenImage(img)}
-                          onError={(e) => { e.currentTarget.src = "/placeholder_person.jpg"; }}
+                          onError={(e) => {
+                            e.currentTarget.src = "/placeholder_person.jpg";
+                          }}
                         />
                         <button
                           onClick={(e) => {
@@ -1557,7 +1763,9 @@ const OrdersTab = () => {
           <button
             onClick={async (e) => {
               e.stopPropagation();
-              const success = await handleDeleteDefectiveImage(fullScreenImage.id);
+              const success = await handleDeleteDefectiveImage(
+                fullScreenImage.id
+              );
               if (success) {
                 setFullScreenImage(null);
               }

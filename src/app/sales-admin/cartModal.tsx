@@ -96,6 +96,7 @@ const CartModal: React.FC<CartModalProps> = ({
   showBuyModal,
 }) => {
   const [phoneAlertShown, setPhoneAlertShown] = useState(false);
+  const [isCompositeGST, setIsCompositeGST] = useState(false);
   return (
     <>
       {/* Cart Modal */}
@@ -223,28 +224,28 @@ const CartModal: React.FC<CartModalProps> = ({
                             <div className="flex flex-1 items-start space-x-3 sm:space-x-4 w-full">
                               {/* Checkbox */}
                               <div className="pt-2 sm:pt-0 sm:self-center">
-                              <input
-                                type="checkbox"
-                                checked={selectedOrderIds.includes(
-                                  item.order_id
-                                )}
-                                onChange={(e) => {
-                                  const orderId = item.order_id;
-                                  if (e.currentTarget.checked) {
-                                    setSelectedOrderIds((prev: string[]) => [
-                                      ...prev,
-                                      orderId,
-                                    ]);
-                                  } else {
-                                    setSelectedOrderIds((prev: string[]) =>
-                                      prev.filter(
-                                        (id: string) => id !== orderId
-                                      )
-                                    );
-                                  }
-                                }}
-                                className="w-4 h-4 sm:w-4 sm:h-4 text-[#295A47] bg-gray-100 border-gray-300 rounded focus:ring-[#295A47] focus:ring-2"
-                              />
+                                <input
+                                  type="checkbox"
+                                  checked={selectedOrderIds.includes(
+                                    item.order_id
+                                  )}
+                                  onChange={(e) => {
+                                    const orderId = item.order_id;
+                                    if (e.currentTarget.checked) {
+                                      setSelectedOrderIds((prev: string[]) => [
+                                        ...prev,
+                                        orderId,
+                                      ]);
+                                    } else {
+                                      setSelectedOrderIds((prev: string[]) =>
+                                        prev.filter(
+                                          (id: string) => id !== orderId
+                                        )
+                                      );
+                                    }
+                                  }}
+                                  className="w-4 h-4 sm:w-4 sm:h-4 text-[#295A47] bg-gray-100 border-gray-300 rounded focus:ring-[#295A47] focus:ring-2"
+                                />
                               </div>
 
                               {/* Image */}
@@ -268,56 +269,57 @@ const CartModal: React.FC<CartModalProps> = ({
 
                               {/* Product Details */}
                               <div className="flex-1 min-w-0 space-y-1">
-                              <h3 className="font-semibold text-[#295A47] text-sm sm:text-base">
-                                {item.product_name}
-                              </h3>
-                              <p className="text-xs sm:text-sm text-gray-600">
-                                {item.company_name}
-                              </p>
-                              {/* <p className="text-xs sm:text-sm text-gray-500">
+                                <h3 className="font-semibold text-[#295A47] text-sm sm:text-base">
+                                  {item.product_name}
+                                </h3>
+                                <p className="text-xs sm:text-sm text-gray-600">
+                                  {item.company_name}
+                                </p>
+                                {/* <p className="text-xs sm:text-sm text-gray-500">
                                 ₹{item.changed_price.toLocaleString()} each
                               </p> */}
-                              <p className="text-xs sm:text-sm font-medium text-blue-600">
-                                Order ID: {item.order_id}
-                              </p>
-                              <p className="text-xs sm:text-sm font-medium text-purple-600">
-                                Agent ID: {item.agent_id}
-                              </p>
-                              <div className="text-xs text-gray-400 mt-2">
-                                <label className="block mb-1 text-xs">
-                                  Client Name:
-                                </label>
-                                <div className="flex items-center space-x-2">
-                                  <input
-                                    type="text"
-                                    value={
-                                      pendingClientNames[item.order_id] ??
-                                      item.client_name ??
-                                      ""
-                                    }
-                                    onChange={(e) =>
-                                      setPendingClientNames((prev) => ({
-                                        ...prev,
-                                        [item.order_id]: e.target.value,
-                                      }))
-                                    }
-                                    className="flex-1 px-2 py-1 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-[#295A47] focus:border-transparent"
-                                    placeholder="Enter client name"
-                                  />
-                                  <button
-                                    onClick={() =>
-                                      handleClientNameChange(
-                                        [item.order_id],
-                                        pendingClientNames[item.order_id] || ""
-                                      )
-                                    }
-                                    className="p-1 bg-green-500 text-white rounded hover:bg-green-600 transition-colors flex-shrink-0"
-                                    title="Update Client Name"
-                                  >
-                                    <Check className="w-3 h-3" />
-                                  </button>
+                                <p className="text-xs sm:text-sm font-medium text-blue-600">
+                                  Order ID: {item.order_id}
+                                </p>
+                                <p className="text-xs sm:text-sm font-medium text-purple-600">
+                                  Agent ID: {item.agent_id}
+                                </p>
+                                <div className="text-xs text-gray-400 mt-2">
+                                  <label className="block mb-1 text-xs">
+                                    Client Name:
+                                  </label>
+                                  <div className="flex items-center space-x-2">
+                                    <input
+                                      type="text"
+                                      value={
+                                        pendingClientNames[item.order_id] ??
+                                        item.client_name ??
+                                        ""
+                                      }
+                                      onChange={(e) =>
+                                        setPendingClientNames((prev) => ({
+                                          ...prev,
+                                          [item.order_id]: e.target.value,
+                                        }))
+                                      }
+                                      className="flex-1 px-2 py-1 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-[#295A47] focus:border-transparent"
+                                      placeholder="Enter client name"
+                                    />
+                                    <button
+                                      onClick={() =>
+                                        handleClientNameChange(
+                                          [item.order_id],
+                                          pendingClientNames[item.order_id] ||
+                                            ""
+                                        )
+                                      }
+                                      className="p-1 bg-green-500 text-white rounded hover:bg-green-600 transition-colors flex-shrink-0"
+                                      title="Update Client Name"
+                                    >
+                                      <Check className="w-3 h-3" />
+                                    </button>
+                                  </div>
                                 </div>
-                              </div>
                               </div>
                             </div>
 
@@ -389,7 +391,7 @@ const CartModal: React.FC<CartModalProps> = ({
                       Continue Shopping
                     </button>
                     <button
-                      onClick={() => {
+                      onClick={async () => {
                         const selectedItems = cart.filter((item) =>
                           selectedOrderIds.includes(item.order_id)
                         );
@@ -409,6 +411,18 @@ const CartModal: React.FC<CartModalProps> = ({
                             "Please select products from only one company to proceed."
                           );
                           return;
+                        }
+
+                        // Check composite GST scheme for the dealer
+                        const dealerId = selectedItems[0].dealer_id;
+                        try {
+                          const res = await fetch(
+                            `/api/sales-admin/check-composite-gst?dealer_id=${dealerId}`
+                          );
+                          const data = await res.json();
+                          setIsCompositeGST(data.composite_gst_scheme === 1);
+                        } catch {
+                          setIsCompositeGST(false);
                         }
 
                         const subtotal = getTotalAmount();
@@ -530,10 +544,7 @@ const CartModal: React.FC<CartModalProps> = ({
                         "ArrowLeft",
                         "ArrowRight",
                       ];
-                      if (
-                        !allowedKeys.includes(e.key) &&
-                        !/^\d$/.test(e.key)
-                      ) {
+                      if (!allowedKeys.includes(e.key) && !/^\d$/.test(e.key)) {
                         e.preventDefault();
                       }
                     }}
@@ -541,7 +552,9 @@ const CartModal: React.FC<CartModalProps> = ({
                       const phone = e.target.value;
                       if (phone && phone.length < 10 && !phoneAlertShown) {
                         setPhoneAlertShown(true);
-                        alert("Client phone number must be at least 10 digits.");
+                        alert(
+                          "Client phone number must be at least 10 digits."
+                        );
                         e.target.focus();
                         setTimeout(() => setPhoneAlertShown(false), 100);
                       }
@@ -552,24 +565,26 @@ const CartModal: React.FC<CartModalProps> = ({
                   />
                 </div>
 
-                {/* Client GSTIN */}
-                <div>
-                  <label className="block text-sm font-medium text-[#295A47] mb-2">
-                    Client GSTIN
-                  </label>
-                  <input
-                    type="text"
-                    value={buyFormData.client_gstin}
-                    onChange={(e) =>
-                      setBuyFormData({
-                        ...buyFormData,
-                        client_gstin: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#295A47] focus:border-transparent"
-                    placeholder="Enter client GSTIN"
-                  />
-                </div>
+                {/* Client GSTIN - hidden for composite GST dealers */}
+                {!isCompositeGST && (
+                  <div>
+                    <label className="block text-sm font-medium text-[#295A47] mb-2">
+                      Client GSTIN
+                    </label>
+                    <input
+                      type="text"
+                      value={buyFormData.client_gstin}
+                      onChange={(e) =>
+                        setBuyFormData({
+                          ...buyFormData,
+                          client_gstin: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#295A47] focus:border-transparent"
+                      placeholder="Enter client GSTIN"
+                    />
+                  </div>
+                )}
 
                 {/* Delivery Type */}
                 <div>
@@ -809,7 +824,7 @@ const CartModal: React.FC<CartModalProps> = ({
                     {/* QR Code for UPI Payment */}
                     <div className="mt-4 flex justify-center">
                       <img
-                        src="/Kayapalat Payment Qr .jpeg"
+                        src="/kayapalat_payment_qr.jpeg"
                         alt="Kayapalat Payment QR Code"
                         className="w-32 h-32 rounded-lg shadow-md"
                       />

@@ -608,7 +608,42 @@ const LeadTab = () => {
           <span className="ml-2 text-sm text-gray-600">entries</span>
         </div>
       </div>
+<div className="w-full rounded-xl border border-orange-100 bg-gradient-to-r from-orange-50 to-red-50 px-4 py-3 shadow-sm">
+        <div className="flex flex-col items-center justify-between gap-2 sm:flex-row">
 
+          {/* Motivation */}
+          <div className="text-center sm:text-left">
+            <p className="text-sm font-bold text-gray-800">
+              🔥 Make{" "}
+              <span className="text-[rgb(207,0,6)]">
+                75 connected calls daily
+              </span>{" "}
+              to book more projects!
+            </p>
+
+            <p className="text-xs font-medium text-gray-500">
+              More Projects ={" "}
+              <span className="font-bold text-[rgb(255,170,0)]">
+                More Incentive 💰
+              </span>
+            </p>
+          </div>
+
+          {/* Incentive */}
+          <div className="flex items-center gap-2 text-xs font-bold">
+            <div className="rounded-lg bg-white px-3 py-2 text-center shadow-sm">
+              <span className="text-gray-500">Below ₹10L</span>
+              <span className="ml-1 text-[rgb(207,0,6)]">₹2,500</span>
+            </div>
+
+            <div className="rounded-lg bg-white px-3 py-2 text-center shadow-sm">
+              <span className="text-gray-500">₹10L+</span>
+              <span className="ml-1 text-[rgb(207,0,6)]">₹5,000</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
       {/* Stats for Site Visit */}
       {activeTab === "site" && (
         <div className="flex gap-6 mb-6">

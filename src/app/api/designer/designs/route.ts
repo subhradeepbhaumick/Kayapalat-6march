@@ -37,8 +37,9 @@ export async function POST(request: NextRequest) {
     const room_name = formData.get('room_name') as string;
     const product_name = formData.get('product_name') as string;
     const image = formData.get('image') as File;
+    const pdf = formData.get('pdf') as File; 
 
-    if (!client_id || !client_name || !room_name || !image) {
+    if (!client_id || !client_name || !room_name || (!image && !pdf)) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -74,66 +75,127 @@ export async function POST(request: NextRequest) {
       );
       roomId = (insertRoom as any).insertId;
     }
+    let revisionId: number | null = null;
 
-    // Check current revision count for the room
-    const revisionCountResult = await db.query(
-      'SELECT COUNT(*) as count FROM design_revisions WHERE room_id = ?',
+    // Fetch existing revisions to determine how to associate the new upload
+    const existingRevisions = await db.query(
+      'SELECT revision_id, revision_number FROM design_revisions WHERE room_id = ? ORDER BY revision_number DESC',
       [roomId]
     );
-    const revisionCount = revisionCountResult[0].count;
+    
+    const revisionCount = existingRevisions.length;
 
-    if (revisionCount >= 3) {
-      return NextResponse.json(
-        { error: 'Maximum 3 revisions allowed per room' },
-        { status: 400 }
+    if (image) {
+      // Image upload creates a NEW revision
+      if (revisionCount >= 3) {
+        return NextResponse.json(
+          { error: 'Maximum 3 revisions allowed per room' },
+          { status: 400 }
+        );
+      }
+
+      const nextRevisionNumber = revisionCount + 1;
+
+      const insertRevision = await db.query(
+        'INSERT INTO design_revisions (room_id, revision_number) VALUES (?, ?)',
+        [roomId, nextRevisionNumber]
       );
-    }
 
-    // Create new revision
-    const nextRevisionNumber = revisionCount + 1;
-    const insertRevision = await db.query(
-      'INSERT INTO design_revisions (room_id, revision_number) VALUES (?, ?)',
-      [roomId, nextRevisionNumber]
-    );
-    const revisionId = (insertRevision as any).insertId;
+      revisionId = (insertRevision as any).insertId;
+    } else if (pdf) {
+      // PDF-only upload: associate with the latest existing revision, 
+      // or create the first one if the room is empty.
+      if (revisionCount > 0) {
+        // Use the latest existing revision ID
+        revisionId = existingRevisions[0].revision_id;
+      } else {
+        // Create first revision if none exist yet for this room
+        const insertRevision = await db.query(
+          'INSERT INTO design_revisions (room_id, revision_number) VALUES (?, ?)',
+          [roomId, 1]
+        );
+        revisionId = (insertRevision as any).insertId;
+      }}
 
     // Generate unique filename
     const timestamp = Date.now();
-    const sanitizedName = image.name.replace(/[^a-zA-Z0-9._-]/g, '_').replace(/\s+/g, '_');
-    const filename = `clientdesigns/${timestamp}-${sanitizedName}`;
+    let imagePath: string | null = null;
 
-    // Upload to local public folder
-    let fileBuffer: Buffer;
-    try {
-      fileBuffer = Buffer.from(await image.arrayBuffer());
-    } catch (bufferError) {
-      console.error('Error reading file buffer:', bufferError);
-      return NextResponse.json(
-        { error: 'Invalid file format' },
-        { status: 400 }
-      );
-    }
+if (image) {
+  const timestamp = Date.now();
+  const sanitizedName = image.name
+    .replace(/[^a-zA-Z0-9._-]/g, "_")
+    .replace(/\s+/g, "_");
 
-    const uploadResult = await uploadDesignLocal(filename, fileBuffer, image.type);
+  const filename = `clientdesigns/${timestamp}-${sanitizedName}`;
 
-    if (!uploadResult.success) {
-      return NextResponse.json(
-        { error: 'Failed to upload image' },
-        { status: 500 }
-      );
-    }
+  let fileBuffer: Buffer;
+  try {
+    fileBuffer = Buffer.from(await image.arrayBuffer());
+  } catch (err) {
+    return NextResponse.json(
+      { error: "Invalid image file" },
+      { status: 400 }
+    );
+  }
+
+  const uploadResult = await uploadDesignLocal(
+    filename,
+    fileBuffer,
+    image.type
+  );
+
+  if (!uploadResult.success) {
+    return NextResponse.json(
+      { error: "Failed to upload image" },
+      { status: 500 }
+    );
+  }
+
+  imagePath = filename;
+}
+let pdfPath: string | null = null;
+
+if (pdf) {
+  const date = new Date();
+  const dd = String(date.getDate()).padStart(2, "0");
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const yy = String(date.getFullYear()).slice(-2);
+
+  const sanitizedClient = client_name.replace(/[^a-zA-Z0-9]/g, "_");
+
+  const pdfFileName = `2d-design/${sanitizedClient}-${dd}${mm}${yy}.pdf`;
+
+  const buffer = Buffer.from(await pdf.arrayBuffer());
+
+  const uploadPdf = await uploadDesignLocal(
+    pdfFileName,
+    buffer,
+    pdf.type
+  );
+
+  if (!uploadPdf.success) {
+    return NextResponse.json(
+      { error: 'Failed to upload PDF' },
+      { status: 500 }
+    );
+  }
+
+  pdfPath = pdfFileName;
+}
 
     // Save to database
     const result = await db.query(`
       INSERT INTO designer_designs (
-        designer_id, client_id, client_name, image_path,
+        designer_id, client_id, client_name, image_path,2d_pdf_path,
         room_name, product_name, revision_id, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?,NOW())
     `, [
       designerId,
       client_id,
       client_name,
-      filename,
+      imagePath,
+      pdfPath,
       room_name,
       product_name,
       revisionId

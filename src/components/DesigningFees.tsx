@@ -366,7 +366,7 @@ const DesigningFees: React.FC<DesigningFeesProps> = ({ onViewTransactions }) => 
                     <div className="text-sm text-blue-700 space-y-1">
                       <p><strong>Bank:</strong> HDFC</p>
                       <p><strong>A/C No:</strong> 50200112029048</p>
-                      <p><strong>IFSC Code:</strong> HDFC0004283</p>
+                      <p><strong>IFSC Code:</strong> HDFC0005690</p>
                       <p><strong>Branch:</strong> BAGHAJATIN</p>
                       <p><strong>Name:</strong> KAYAPALAT</p>
                     </div>

@@ -21,6 +21,7 @@ interface ProjectAllotment {
   id: string;
   appointment_id: string;
   project_name: string;
+  client_name: string;
   project_value: number;
   supervisors: AssignedSupervisor[];
 }
@@ -47,8 +48,8 @@ const SuperAdmin_Supervisor = () => {
   const [endDate, setEndDate] = useState("");
   const [totalBudget, setTotalBudget] = useState("");
   const [cashInHand, setCashInHand] = useState("");
-const [paid, setPaid] = useState("");
-const [due, setDue] = useState("");
+  const [paid, setPaid] = useState("");
+  const [due, setDue] = useState("");
 
   // Fetch dates when date modal opens
   useEffect(() => {
@@ -68,22 +69,23 @@ const [due, setDue] = useState("");
               setStartDate(
                 firstAssignment.start_date
                   ? new Date(firstAssignment.start_date).toLocaleDateString(
-                      "en-CA"
-                    )
+                    "en-CA"
+                  )
                   : ""
               );
 
               setEndDate(
                 firstAssignment.end_date
                   ? new Date(firstAssignment.end_date).toLocaleDateString(
-                      "en-CA"
-                    )
+                    "en-CA"
+                  )
                   : ""
               );
-setTotalBudget(firstAssignment.total_budget || "");
-setCashInHand(firstAssignment.cash_in_hand || "");
-setPaid(firstAssignment.paid || "");
-setDue(firstAssignment.due || "");            }
+              setTotalBudget(firstAssignment.total_budget || "");
+              setCashInHand(firstAssignment.cash_in_hand || "");
+              setPaid(firstAssignment.paid || "");
+              setDue(firstAssignment.due || "");
+            }
           }
         } catch (err) {
           console.error("Failed to fetch dates:", err);
@@ -193,18 +195,18 @@ setDue(firstAssignment.due || "");            }
           prev.map((p) =>
             p.id === projectId
               ? {
-                  ...p,
-                  supervisors: [
-                    ...p.supervisors,
-                    {
-                      id: data.assignment.id,
-                      supervisor_id: supervisorId,
-                      supervisor_name: supervisor?.name || null,
-                      profile_pic:
-                        supervisor?.profilePic || "/placeholder_person.jpg",
-                    },
-                  ],
-                }
+                ...p,
+                supervisors: [
+                  ...p.supervisors,
+                  {
+                    id: data.assignment.id,
+                    supervisor_id: supervisorId,
+                    supervisor_name: supervisor?.name || null,
+                    profile_pic:
+                      supervisor?.profilePic || "/placeholder_person.jpg",
+                  },
+                ],
+              }
               : p
           )
         );
@@ -236,11 +238,11 @@ setDue(firstAssignment.due || "");            }
           prev.map((p) =>
             p.id === projectId
               ? {
-                  ...p,
-                  supervisors: p.supervisors.filter(
-                    (s) => s.id !== assignmentId
-                  ),
-                }
+                ...p,
+                supervisors: p.supervisors.filter(
+                  (s) => s.id !== assignmentId
+                ),
+              }
               : p
           )
         );
@@ -330,11 +332,11 @@ setDue(firstAssignment.due || "");            }
             prev.map((s) =>
               s.user_id === editingSupervisor?.user_id
                 ? {
-                    ...s,
-                    name: formData.name,
-                    email: formData.email,
-                    phone: formData.phone,
-                  }
+                  ...s,
+                  name: formData.name,
+                  email: formData.email,
+                  phone: formData.phone,
+                }
                 : s
             )
           );
@@ -400,10 +402,10 @@ setDue(firstAssignment.due || "");            }
         prev.map((p) =>
           p.id === projectId
             ? {
-                ...p,
-                supervisor_id: supervisor.user_id,
-                supervisor_name: supervisor.name,
-              }
+              ...p,
+              supervisor_id: supervisor.user_id,
+              supervisor_name: supervisor.name,
+            }
             : p
         )
       );
@@ -533,6 +535,7 @@ setDue(firstAssignment.due || "");            }
               <tr>
                 <th className="px-4 py-2 border">Appointment ID</th>
                 <th className="px-4 py-2 border">Project Name</th>
+                <th className="px-4 py-2 border">Client</th>
                 <th className="px-4 py-2 border">Supervisor</th>
                 <th className="px-4 py-2 border">Action</th>
               </tr>
@@ -558,6 +561,7 @@ setDue(firstAssignment.due || "");            }
                   >
                     {project.project_name}
                   </td>
+                  <td className="px-4 py-2 border">{project.client_name}</td>
                   <td className="px-4 py-2 border">
                     {activeAllotmentId === project.id ? (
                       <div className="flex flex-col gap-2">
@@ -808,41 +812,41 @@ setDue(firstAssignment.due || "");            }
                 />
               </div>
               <div>
-  <label className="block text-sm font-medium text-gray-700">
-    Cash In Hand (Supervisor)
-  </label>
-  <input
-    type="number"
-    value={cashInHand}
-    onChange={(e) => setCashInHand(e.target.value)}
-    className="w-full border p-2 rounded"
-    placeholder="Enter cash in hand"
-  />
-</div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Cash In Hand (Supervisor)
+                </label>
+                <input
+                  type="number"
+                  value={cashInHand}
+                  onChange={(e) => setCashInHand(e.target.value)}
+                  className="w-full border p-2 rounded"
+                  placeholder="Enter cash in hand"
+                />
+              </div>
 
-<div>
-  <label className="block text-sm font-medium text-gray-700">
-    Paid
-  </label>
-  <input
-    type="number"
-    value={paid}
-    readOnly
-    className="w-full border p-2 rounded bg-gray-100 cursor-not-allowed"
-  />
-</div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Paid
+                </label>
+                <input
+                  type="number"
+                  value={paid}
+                  readOnly
+                  className="w-full border p-2 rounded bg-gray-100 cursor-not-allowed"
+                />
+              </div>
 
-<div>
-  <label className="block text-sm font-medium text-gray-700">
-    Due
-  </label>
-  <input
-    type="number"
-    value={due}
-    readOnly
-    className="w-full border p-2 rounded bg-gray-100 cursor-not-allowed"
-  />
-</div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Due
+                </label>
+                <input
+                  type="number"
+                  value={due}
+                  readOnly
+                  className="w-full border p-2 rounded bg-gray-100 cursor-not-allowed"
+                />
+              </div>
             </div>
             <div className="flex gap-3 mt-4">
               <button

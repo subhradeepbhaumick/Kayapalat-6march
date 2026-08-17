@@ -23,8 +23,8 @@ export async function GET(request: NextRequest) {
 
     // Fetch all showroom spaces with all details
     const [rows] = await connection.execute(`
-      SELECT space_id, space_type, size, price, dealer_id, client_name, advance,due,special_discount,discounted_price,deal_price, booking_cost, time_period, transaction_proof, booking_status, booking_date, expire_date, updated_at
-      FROM \`showroom a\`
+      SELECT space_id, space_type, size, price, dealer_id, client_name, advance,due,special_discount,discounted_price,deal_price, booking_cost, time_period, transaction_proof, booking_status, booking_date, expire_date, updated_at,invoice_id,agreement
+      FROM \`showroom_a\`
       ORDER BY space_type
     `);
 
@@ -49,6 +49,8 @@ export async function GET(request: NextRequest) {
       booking_date: row.booking_date ? new Date(row.booking_date).toISOString().split('T')[0] : null,
       expire_date: row.expire_date ? new Date(row.expire_date).toISOString().split('T')[0] : null,
       updated_at: row.updated_at,
+      invoice_id: row.invoice_id,
+      agreement: row.agreement,
     }));
 
     return NextResponse.json(showroomSpaces);
@@ -98,7 +100,7 @@ export async function PUT(request: NextRequest) {
     const values = updateFields.map(field => updates[field]);
 
     const query = `
-      UPDATE \`showroom a\`
+      UPDATE \`showroom_a\`
       SET ${setClause}, updated_at = NOW()
       WHERE space_id = ?
     `;

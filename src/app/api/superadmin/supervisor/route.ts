@@ -208,7 +208,8 @@ export async function GET() {
       SELECT 
         p.appointment_id,
         p.project_name,
-        p.project_value
+        p.project_value,
+        p.client_name
       FROM projects p
       WHERE p.booking_status = 'Booked'
       ORDER BY p.created_at DESC
@@ -219,6 +220,7 @@ export async function GET() {
       appointment_id: p.appointment_id,
       project_name: p.project_name,
       project_value: p.project_value,
+      client_name: p.client_name,
       supervisor_id: null,
       supervisor_name: null,
     }));

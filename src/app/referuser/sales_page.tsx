@@ -58,7 +58,10 @@ const SalesPage: React.FC<SalesPageProps> = ({ agentId }) => {
         });
         if (response.ok) {
           const data = await response.json();
-          setProjectsData(data.projects || []);
+          const commissionProjects = data.projects.filter(
+            (project: any) => project.lead_type === 0
+          );
+          setProjectsData(commissionProjects || []);
         } else {
           console.error('Failed to fetch projects');
         }
@@ -190,8 +193,8 @@ const SalesPage: React.FC<SalesPageProps> = ({ agentId }) => {
                 <th className="p-2 border">Client Name</th>
                 <th className="p-2 border">Phone Number</th>
                 <th className="p-2 border">Project Value</th>
-                <th className="p-2 border">Commission</th>
-                <th className="p-2 border">Agent Share</th>
+                {/* <th className="p-2 border">Commission</th>
+                <th className="p-2 border">Agent Share</th> */}
                 <th className="p-2 border">Property Type</th>
                 <th className="p-2 border">Booking Status</th>
               </tr>
@@ -205,8 +208,8 @@ const SalesPage: React.FC<SalesPageProps> = ({ agentId }) => {
                   <td className="p-2 border">{item.client_name}</td>
                   <td className="p-2 border">{item.client_phone}</td>
                   <td className="p-2 border">₹{item.project_value.toLocaleString()}</td>
-                  <td className="p-2 border">{item.commission}%</td>
-                  <td className="p-2 border">₹{item.agent_share.toLocaleString()}</td>
+                  {/* <td className="p-2 border">{item.commission}%</td> */}
+                  {/* <td className="p-2 border">₹{item.agent_share.toLocaleString()}</td> */}
                   <td className="p-2 border">{item.property_type}</td>
                   <td className="p-2 border">{item.booking_status}</td>
                 </tr>
@@ -226,8 +229,8 @@ const SalesPage: React.FC<SalesPageProps> = ({ agentId }) => {
                 <th className="p-2 border">Client Name</th>
                 <th className="p-2 border">Phone Number</th>
                 <th className="p-2 border">Project Value</th>
-                <th className="p-2 border">Commission</th>
-                <th className="p-2 border">Agent Share</th>
+                {/* <th className="p-2 border">Commission</th> */}
+                {/* <th className="p-2 border">Agent Share</th> */}
                 <th className="p-2 border">Property Type</th>
                 <th className="p-2 border">Created At</th>
               </tr>
@@ -241,8 +244,8 @@ const SalesPage: React.FC<SalesPageProps> = ({ agentId }) => {
                   <td className="p-2 border">{item.client_name}</td>
                   <td className="p-2 border">{item.client_phone}</td>
                   <td className="p-2 border">₹{item.project_value.toLocaleString()}</td>
-                  <td className="p-2 border">{item.commission}%</td>
-                  <td className="p-2 border">₹{item.agent_share.toLocaleString()}</td>
+                  {/* <td className="p-2 border">{item.commission}%</td> */}
+                  {/* <td className="p-2 border">₹{item.agent_share.toLocaleString()}</td> */}
                   <td className="p-2 border">{item.property_type}</td>
                   <td className="p-2 border">{item.created_at ? new Date(item.created_at).toLocaleDateString() : 'N/A'}</td>
                 </tr>
@@ -262,37 +265,33 @@ const SalesPage: React.FC<SalesPageProps> = ({ agentId }) => {
         {/* Tabs */}
         <div className="flex gap-2 md:gap-4 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 whitespace-nowrap">
           <button
-            className={`px-4 py-2 rounded-3xl ${
-              activeTab === "cold" ? "bg-green-900 text-white" : "bg-white border"
-            }`}
+            className={`px-4 py-2 rounded-3xl ${activeTab === "cold" ? "bg-green-900 text-white" : "bg-white border"
+              }`}
             onClick={() => setActiveTab("cold")}
           >
             Cold Calling
           </button>
           <button
-            className={`px-4 py-2 rounded-3xl ${
-              activeTab === "site" ? "bg-green-900 text-white" : "bg-white border"
-            }`}
+            className={`px-4 py-2 rounded-3xl ${activeTab === "site" ? "bg-green-900 text-white" : "bg-white border"
+              }`}
             onClick={() => setActiveTab("site")}
           >
             Site Visit
           </button>
           <button
-            className={`px-4 py-2 rounded-3xl ${
-              activeTab === "booking"
+            className={`px-4 py-2 rounded-3xl ${activeTab === "booking"
                 ? "bg-green-900 text-white"
                 : "bg-white border"
-            }`}
+              }`}
             onClick={() => setActiveTab("booking")}
           >
             Prospect
           </button>
           <button
-            className={`px-4 py-2 rounded-3xl ${
-              activeTab === "booked"
+            className={`px-4 py-2 rounded-3xl ${activeTab === "booked"
                 ? "bg-green-900 text-white"
                 : "bg-white border"
-            }`}
+              }`}
             onClick={() => setActiveTab("booked")}
           >
             Booked
@@ -302,34 +301,34 @@ const SalesPage: React.FC<SalesPageProps> = ({ agentId }) => {
 
       {/* Filters */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 bg-white p-4 rounded-lg shadow-sm">
-          <div>
-            <label className="text-sm text-gray-600 block mb-1">Select Status</label>
-            <select
-              className="border p-2 rounded-md w-full"
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-            >
-              <option value="all">All</option>
-              <option value="upcoming">Upcoming</option>
-              <option value="not_responding">Not Responding</option>
-              <option value="no_show">Not Show</option>
-              <option value="not_interested">Not Interested</option>
-              <option value="booked">Booked</option>
-              <option value="time_asc">By Time Ascending</option>
-              <option value="time_desc">By Time Descending</option>
-              <option value="confirmed">Confirmed</option>
-            </select>
-          </div>
+        <div>
+          <label className="text-sm text-gray-600 block mb-1">Select Status</label>
+          <select
+            className="border p-2 rounded-md w-full"
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+          >
+            <option value="all">All</option>
+            <option value="upcoming">Upcoming</option>
+            <option value="not_responding">Not Responding</option>
+            <option value="no_show">Not Show</option>
+            <option value="not_interested">Not Interested</option>
+            <option value="booked">Booked</option>
+            <option value="time_asc">By Time Ascending</option>
+            <option value="time_desc">By Time Descending</option>
+            <option value="confirmed">Confirmed</option>
+          </select>
+        </div>
 
-          <div>
-            <label className="text-sm text-gray-600 block mb-1">From Date</label>
-            <input type="date" className="border p-2 rounded-md w-full" />
-          </div>
+        <div>
+          <label className="text-sm text-gray-600 block mb-1">From Date</label>
+          <input type="date" className="border p-2 rounded-md w-full" />
+        </div>
 
-          <div>
-            <label className="text-sm text-gray-600 block mb-1">To Date</label>
-            <input type="date" className="border p-2 rounded-md w-full" />
-          </div>
+        <div>
+          <label className="text-sm text-gray-600 block mb-1">To Date</label>
+          <input type="date" className="border p-2 rounded-md w-full" />
+        </div>
 
         <div>
           <label className="text-sm text-gray-600 block mb-1">Show</label>
@@ -394,7 +393,7 @@ const SalesPage: React.FC<SalesPageProps> = ({ agentId }) => {
               <ChevronLeft className="w-4 h-4" />
             </button>
             <span className="flex items-center px-2 text-sm font-medium">
-                Page {currentPage} of {totalPages}
+              Page {currentPage} of {totalPages}
             </span>
             <button
               onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}

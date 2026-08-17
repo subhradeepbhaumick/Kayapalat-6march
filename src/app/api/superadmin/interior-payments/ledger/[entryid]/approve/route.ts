@@ -17,9 +17,11 @@ export async function POST(
     }
 
     const { entryId } = await params;
+    console.log("FULL params:", await params);
+    console.log("RAW entryId:", entryId);
     const entryIdNum = parseInt(entryId);
 
-    if (!entryIdNum || isNaN(entryIdNum)) {
+    if (isNaN(entryIdNum)) {
       return NextResponse.json({ error: 'Invalid entry ID' }, { status: 400 });
     }
 
@@ -28,17 +30,17 @@ export async function POST(
     let entryType = '';
     let existing: any[] = [];
 
-    // Check charges
-    [existing] = await executeQuery(`SELECT id, status FROM interior_billing_charges WHERE id = ?`, [entryIdNum]);
+    // Check payments
+    [existing] = await executeQuery(`SELECT id, status FROM interior_payment_transactions WHERE id = ?`, [entryIdNum]);
     if ((existing as any[]).length > 0) {
-      tableName = 'interior_billing_charges';
-      entryType = 'charge';
+      tableName = 'interior_payment_transactions';
+      entryType = 'payment';
     } else {
-      // Check payments
-      [existing] = await executeQuery(`SELECT id, status FROM interior_payment_transactions WHERE id = ?`, [entryIdNum]);
+      // Check charges
+      [existing] = await executeQuery(`SELECT id, status FROM interior_billing_charges WHERE id = ?`, [entryIdNum]);
       if ((existing as any[]).length > 0) {
-        tableName = 'interior_payment_transactions';
-        entryType = 'payment';
+        tableName = 'interior_billing_charges';
+        entryType = 'charge';
       } else {
         // Check adjustments
         [existing] = await executeQuery(`SELECT id, status FROM interior_adjustments WHERE id = ?`, [entryIdNum]);
@@ -56,7 +58,7 @@ export async function POST(
     const entry = (existing as any[])[0];
 
     if (entry.status === 'approved') {
-      return NextResponse.json({ error: 'Entry is already approved' }, { status: 400 });
+      return NextResponse.json({ error: 'Entry is already approved' }, { status: 200 });
     }
 
     // Update status to approved

@@ -84,24 +84,7 @@ export async function POST(req: Request) {
 
         const formData = await req.formData();
 
-        let checkin = formData.get("checkin")?.toString() || null;
-
-        if (checkin) {
-            const date = new Date(checkin);
-
-            const ist = new Date(
-                date.toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
-            );
-
-            const year = ist.getFullYear();
-            const month = String(ist.getMonth() + 1).padStart(2, "0");
-            const day = String(ist.getDate()).padStart(2, "0");
-            const hours = String(ist.getHours()).padStart(2, "0");
-            const minutes = String(ist.getMinutes()).padStart(2, "0");
-            const seconds = String(ist.getSeconds()).padStart(2, "0");
-
-            checkin = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-        }
+const checkin = formData.get("checkin")?.toString() || null;    
         const text = formData.get("text")?.toString() || null;
         const image = formData.get("image") as File | null;
 
@@ -170,24 +153,7 @@ export async function PUT(req: Request) {
         const supervisor_id = (session.user as any).id;
 
         const body = await req.json();
-        let { checkout, id } = body;
-
-        if (checkout) {
-            const date = new Date(checkout);
-
-            const ist = new Date(
-                date.toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
-            );
-
-            const year = ist.getFullYear();
-            const month = String(ist.getMonth() + 1).padStart(2, "0");
-            const day = String(ist.getDate()).padStart(2, "0");
-            const hours = String(ist.getHours()).padStart(2, "0");
-            const minutes = String(ist.getMinutes()).padStart(2, "0");
-            const seconds = String(ist.getSeconds()).padStart(2, "0");
-
-            checkout = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-        }
+const { checkout, id } = body;
 
         if (!id) {
             return NextResponse.json(

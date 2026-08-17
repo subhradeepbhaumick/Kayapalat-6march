@@ -16,6 +16,7 @@ import SettingsTab from './sales_settings';
 import ProductsTab from './sales_products';
 import OrdersTab from './sales_showorder';
 import SalesQuotationPdfsTab from './sales_quotation_pdfs';
+import CommissionLeadsTab from './sales_leads_commission';
 
 const SalesAdmin = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -136,7 +137,8 @@ React.useEffect(() => {
   const sidebarItems = [
     { icon: LayoutDashboard, label: 'Dashboard', key: 'Dashboard' },
     { icon: Users, label: 'Agents', key: 'Agents' },
-    { icon: UserPlus, label: 'Leads', key: 'Leads' },
+    { icon: UserPlus, label: 'Leads for Sale', key: 'Leads' },
+    { icon: UserPlus, label: 'Leads for Commission', key: 'Commission Leads' },
     { icon: UserPlus, label: 'Payments', key: 'Payments' },
     { icon: UserPlus, label: 'Invoices', key: 'Invoices' },
     { icon: FileText, label: 'PDF Quotations', key: 'PDF Quotations' },
@@ -378,6 +380,10 @@ React.useEffect(() => {
 
               {activeTab === 'Leads' && (
                 <LeadsTab />
+              )}
+
+              {activeTab === 'Commission Leads' && (
+                <CommissionLeadsTab />
               )}
               
               {activeTab === 'Payments' && (

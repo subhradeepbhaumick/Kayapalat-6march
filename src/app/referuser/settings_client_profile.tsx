@@ -19,6 +19,7 @@ interface Client {
   pincode: string;
   lead_date: string;
   appointment_id?: string;
+  pickup_type: "For Sale" | "For Commission"; // New field for pick up type
 }
 
 const ClientPage: React.FC = () => {
@@ -38,6 +39,7 @@ const ClientPage: React.FC = () => {
     state: "",
     pincode: "",
     lead_date: "",
+    pickup_type: "For Commission", // Default selected
   });
 
   const [agentDBInfo, setAgentDBInfo] = useState<any>(null);
@@ -114,13 +116,13 @@ const ClientPage: React.FC = () => {
     }
   }, [agentDBInfo]);
   const formatDate = (isoDate: string) => {
-  if (!isoDate) return '';
-  const d = new Date(isoDate);
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const year = d.getFullYear();
-  return `${day}-${month}-${year}`;
-};
+    if (!isoDate) return '';
+    const d = new Date(isoDate);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}-${month}-${year}`;
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -128,71 +130,72 @@ const ClientPage: React.FC = () => {
   };
 
 
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  if (!formData.client_name || !formData.client_phone) return;
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.client_name || !formData.client_phone) return;
 
-  // Validation alerts
-  if (!/^\d{10}$/.test(formData.client_phone)) {
-    alert('Phone should contain exactly 10 digits');
-    return;
-  }
+    // Validation alerts
+    if (!/^\d{10}$/.test(formData.client_phone)) {
+      alert('Phone should contain exactly 10 digits');
+      return;
+    }
 
-  const today = new Date();
-  const lead_date = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+    const today = new Date();
+    const lead_date = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
 
-  const newClient = {
-    ...formData,
-    lead_date,
-    agent_id: session?.user?.id || null, // <-- automatically pass logged-in agent
-    admin_id: session?.user?.id || null  // optional, if you want admin_id also
-  };
+    const newClient = {
+      ...formData,
+      lead_date,
+      agent_id: session?.user?.id || null, // <-- automatically pass logged-in agent
+      admin_id: session?.user?.id || null  // optional, if you want admin_id also
+    };
 
-  try {
-    const res = await fetch("/api/lead", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newClient),
-      credentials: 'include',
-    });
-
-    const result = await res.json();
-
-    if (res.ok) {
-      // Fetch updated list from server
-      const fetchRes = await fetch(`/api/lead?agent_id=${session?.user?.id}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
+    try {
+      const res = await fetch("/api/lead", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newClient),
         credentials: 'include',
       });
-      if (fetchRes.ok) {
-        const updatedClients = await fetchRes.json();
-        setClients(updatedClients);
+
+      const result = await res.json();
+
+      if (res.ok) {
+        // Fetch updated list from server
+        const fetchRes = await fetch(`/api/lead?agent_id=${session?.user?.id}`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: 'include',
+        });
+        if (fetchRes.ok) {
+          const updatedClients = await fetchRes.json();
+          setClients(updatedClients);
+        }
+        setFormData({
+          client_name: "",
+          email: "",
+          client_phone: "",
+          whatsapp: "",
+          address: "",
+          city: "",
+          state: "",
+          pincode: "",
+          lead_date: "",
+          pickup_type: "For Commission", // Reset to default
+        });
+        setShowForm(false);
+        setShowPopup(true);
+      } else {
+        console.error(result);
+        alert("Failed to save client: " + result.error);
       }
-      setFormData({
-        client_name: "",
-        email: "",
-        client_phone: "",
-        whatsapp: "",
-        address: "",
-        city: "",
-        state: "",
-        pincode: "",
-        lead_date: "",
-      });
-      setShowForm(false);
-      setShowPopup(true);
-    } else {
-      console.error(result);
-      alert("Failed to save client: " + result.error);
+    } catch (err) {
+      console.error(err);
+      alert("Error saving client");
     }
-  } catch (err) {
-    console.error(err);
-    alert("Error saving client");
-  }
-};
+  };
 
 
 
@@ -208,6 +211,7 @@ const handleSubmit = async (e: React.FormEvent) => {
       state: "",
       pincode: "",
       lead_date: "",
+      pickup_type: "For Commission",
     });
   };
 
@@ -246,7 +250,50 @@ const handleSubmit = async (e: React.FormEvent) => {
           <h2 className="text-xl font-semibold text-gray-700 mb-4 text-center">
             Add Client Details
           </h2>
+          {/* Pick Up Type */}
+          <div className="md:col-span-2 mb-6">
+            <label className="block text-sm font-semibold text-gray-700 mb-3 text-center">
+              Pick Up Type
+            </label>
 
+            <div className="flex justify-center">
+              <div className="inline-flex rounded-lg border border-gray-300 bg-gray-100 p-1 shadow-sm">
+                <label
+                  className={`px-6 py-2 rounded-md text-sm font-medium cursor-pointer transition-all duration-200 ${formData.pickup_type === "For Sale"
+                      ? "bg-red-600 text-white shadow"
+                      : "text-gray-600 hover:bg-gray-200"
+                    }`}
+                >
+                  <input
+                    type="radio"
+                    name="pickup_type"
+                    value="For Sale"
+                    checked={formData.pickup_type === "For Sale"}
+                    onChange={handleChange}
+                    className="hidden"
+                  />
+                  For Sale
+                </label>
+
+                <label
+                  className={`px-6 py-2 rounded-md text-sm font-medium cursor-pointer transition-all duration-200 ${formData.pickup_type === "For Commission"
+                      ? "bg-red-600 text-white shadow"
+                      : "text-gray-600 hover:bg-gray-200"
+                    }`}
+                >
+                  <input
+                    type="radio"
+                    name="pickup_type"
+                    value="For Commission"
+                    checked={formData.pickup_type === "For Commission"}
+                    onChange={handleChange}
+                    className="hidden"
+                  />
+                  For Commission
+                </label>
+              </div>
+            </div>
+          </div>
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
             {/* Client Name */}
@@ -401,8 +448,8 @@ const handleSubmit = async (e: React.FormEvent) => {
               <button
                 onClick={() => {
                   setShowReminderModal(false);
-                    // redirect to My Profile by switching tabs
-                   window.dispatchEvent(new CustomEvent("goToMyProfile"));
+                  // redirect to My Profile by switching tabs
+                  window.dispatchEvent(new CustomEvent("goToMyProfile"));
                 }}
                 className="px-4 py-2 bg-[#295A47] text-white rounded-lg hover:bg-[#1e3d32] transition-colors"
               >

@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
-import toast from 'react-hot-toast';
-
+import React, { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
+import toast from "react-hot-toast";
+import { downloadPaymentReceipt } from "./InteriorPaymentReceipt"
 interface Project {
   id: number;
   project_name: string;
@@ -18,8 +18,12 @@ interface Project {
 
 interface LedgerEntry {
   id: number;
-  type: 'charge' | 'payment' | 'adjustment' | 'work' | 'extra_work';
+  type: "charge" | "payment" | "adjustment" | "work" | "extra_work";
   amount: number;
+  customer_name?: string;
+  customer_phone?: string;
+  client_id?: string;
+project_id?: number;
   base_amount?: number;
   description: string;
   payment_method?: string;
@@ -42,18 +46,38 @@ const InteriorPayments = () => {
   const [loading, setLoading] = useState(true);
   const [showLedger, setShowLedger] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
-  const [paymentAmount, setPaymentAmount] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'online'>('online');
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<"cash" | "online">(
+    "online"
+  );
   const [transactionProof, setTransactionProof] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
-
+  const [showInstallments, setShowInstallments] = useState(false);
+  const [installments, setInstallments] = useState<any>({});
+  const [selectedInstallmentAmount, setSelectedInstallmentAmount] =
+    useState("");
+  const fetchInstallments = async (projectId: number) => {
+    try {
+      const res = await fetch(
+        `/api/superadmin/interior-payments/${projectId}/payment-dates`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setInstallments(data || {});
+      }
+    } catch (err) {
+      console.error("Error fetching installments:", err);
+    }
+  };
   const getDaysRemaining = (dueDate?: string | null) => {
     if (!dueDate) return null;
     const due = new Date(dueDate);
     const today = new Date();
     due.setHours(0, 0, 0, 0);
     today.setHours(0, 0, 0, 0);
-    const diff = Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    const diff = Math.ceil(
+      (due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+    );
     return diff;
   };
 
@@ -63,13 +87,13 @@ const InteriorPayments = () => {
 
   const fetchProjects = async () => {
     try {
-      const response = await fetch('/api/client/interior-payments');
+      const response = await fetch("/api/client/interior-payments");
       if (response.ok) {
         const data = await response.json();
         setProjects(data.projects);
       }
     } catch (error) {
-      console.error('Error fetching projects:', error);
+      console.error("Error fetching projects:", error);
     } finally {
       setLoading(false);
     }
@@ -77,13 +101,15 @@ const InteriorPayments = () => {
 
   const fetchLedger = async (projectId: number) => {
     try {
-      const response = await fetch(`/api/client/interior-payments?projectId=${projectId}`);
+      const response = await fetch(
+        `/api/client/interior-payments?projectId=${projectId}`
+      );
       if (response.ok) {
         const data = await response.json();
         setLedger(data.ledger);
       }
     } catch (error) {
-      console.error('Error fetching ledger:', error);
+      console.error("Error fetching ledger:", error);
     }
   };
 
@@ -95,7 +121,8 @@ const InteriorPayments = () => {
 
   const handleMakePayment = (project: Project) => {
     setSelectedProject(project);
-    setShowPayment(true);
+    fetchInstallments(project.id);
+    setShowInstallments(true);
   };
 
   const handlePaymentSubmit = async () => {
@@ -103,39 +130,39 @@ const InteriorPayments = () => {
 
     const amount = parseFloat(paymentAmount);
     if (!amount || amount <= 0) {
-      toast.error('Please enter a valid amount');
+      toast.error("Please enter a valid amount");
       return;
     }
 
     setSubmitting(true);
     try {
       const formData = new FormData();
-      formData.append('project_id', selectedProject.id.toString());
-      formData.append('amount', amount.toString());
-      formData.append('payment_method', paymentMethod);
+      formData.append("project_id", selectedProject.id.toString());
+      formData.append("amount", amount.toString());
+      formData.append("payment_method", paymentMethod);
 
-      if (paymentMethod === 'online' && transactionProof) {
-        formData.append('transaction_proof', transactionProof);
+      if (paymentMethod === "online" && transactionProof) {
+        formData.append("transaction_proof", transactionProof);
       }
 
-      const response = await fetch('/api/client/interior-payments', {
-        method: 'POST',
+      const response = await fetch("/api/client/interior-payments", {
+        method: "POST",
         body: formData,
       });
 
       if (response.ok) {
-        toast.success('Payment submitted successfully');
+        toast.success("Payment submitted successfully");
         setShowPayment(false);
-        setPaymentAmount('');
+        setPaymentAmount("");
         setTransactionProof(null);
         fetchProjects(); // Refresh projects
       } else {
         const error = await response.json();
-        toast.error(error.error || 'Failed to submit payment');
+        toast.error(error.error || "Failed to submit payment");
       }
     } catch (error) {
-      console.error('Error submitting payment:', error);
-      toast.error('Failed to submit payment');
+      console.error("Error submitting payment:", error);
+      toast.error("Failed to submit payment");
     } finally {
       setSubmitting(false);
     }
@@ -153,8 +180,12 @@ const InteriorPayments = () => {
   return (
     <div className="max-w-6xl mx-auto px-2 sm:px-0">
       <div className="text-center mb-6 sm:mb-8">
-        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-[#295A47] mb-4">Interior Project Payments</h1>
-        <p className="text-gray-600 text-sm sm:text-base">Manage your interior project payments</p>
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-[#295A47] mb-4">
+          Interior Project Payments
+        </h1>
+        <p className="text-gray-600 text-sm sm:text-base">
+          Manage your interior project payments
+        </p>
       </div>
 
       {/* Projects List */}
@@ -164,20 +195,38 @@ const InteriorPayments = () => {
             key={project.id}
             className="bg-white rounded-lg shadow-lg p-6 border-2 border-[#295A47]"
           >
-            <h3 className="text-xl font-semibold text-[#295A47] mb-2">{project.project_name}</h3>
+            <h3 className="text-xl font-semibold text-[#295A47] mb-2">
+              {project.project_name}
+            </h3>
             <div className="space-y-2 mb-4">
-              <p className="text-sm text-gray-600">Amount (excluding GST): ₹{(project.base_total ?? 0).toLocaleString('en-IN')}</p>
-              <p className="text-sm text-gray-600">GST: ₹{(project.gst_total ?? 0).toLocaleString('en-IN')}</p>
-              <p className="text-sm text-gray-600">Total (including GST): ₹{(project.gross_total ?? 0).toLocaleString('en-IN')}</p>
-              <p className="text-sm text-gray-600">Paid: ₹{project.paid.toLocaleString('en-IN')}</p>
-              <p className="text-lg font-semibold text-[#295A47]">Outstanding (including GST): ₹{project.outstanding_including_gst.toLocaleString('en-IN')}</p>
+              <p className="text-sm text-gray-600">
+                Amount (excluding GST): ₹
+                {(project.base_total ?? 0).toLocaleString("en-IN")}
+              </p>
+              <p className="text-sm text-gray-600">
+                GST: ₹{(project.gst_total ?? 0).toLocaleString("en-IN")}
+              </p>
+              <p className="text-sm text-gray-600">
+                Total (including GST): ₹
+                {(project.gross_total ?? 0).toLocaleString("en-IN")}
+              </p>
+              <p className="text-sm text-gray-600">
+                Paid: ₹{project.paid.toLocaleString("en-IN")}
+              </p>
+              <p className="text-lg font-semibold text-[#295A47]">
+                Outstanding (including GST): ₹
+                {project.outstanding_including_gst.toLocaleString("en-IN")}
+              </p>
               {project.delivery_due_date ? (
-                <p className="text-sm text-gray-600">Delivery: {getDaysRemaining(project.delivery_due_date)} days left</p>
+                <p className="text-sm text-gray-600">
+                  Delivery: {getDaysRemaining(project.delivery_due_date)} days
+                  left
+                </p>
               ) : (
                 <p className="text-sm text-gray-500">Delivery not set</p>
               )}
             </div>
-            
+
             <div className="flex flex-col sm:flex-row gap-2">
               <button
                 onClick={() => handleViewLedger(project)}
@@ -202,10 +251,14 @@ const InteriorPayments = () => {
           <div className="bg-white rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="p-4 sm:p-6">
               <h2 className="text-xl sm:text-2xl font-bold text-[#295A47] mb-4">
-                Ledger - {selectedProject.project_name}
+                Ledger - {selectedProject.project_name}<span className="block text-sm font-medium text-gray-600 mt-1">
+                  GST: 19AAHCJ0346A1ZY
+                </span>
                 {selectedProject.delivery_due_date && (
                   <span className="block sm:inline sm:ml-3 text-sm font-medium text-gray-600">
-                    Delivery: {getDaysRemaining(selectedProject.delivery_due_date)} days left
+                    Delivery:{" "}
+                    {getDaysRemaining(selectedProject.delivery_due_date)} days
+                    left
                   </span>
                 )}
               </h2>
@@ -214,54 +267,114 @@ const InteriorPayments = () => {
                 <table className="min-w-[760px] w-full border-collapse border border-gray-300">
                   <thead>
                     <tr className="bg-[#D7E7D0]">
-                      <th className="border border-gray-300 px-2 sm:px-4 py-2 text-left">Type</th>
-                      <th className="border border-gray-300 px-2 sm:px-4 py-2 text-left">Amount (₹)</th>
-                      <th className="border border-gray-300 px-2 sm:px-4 py-2 text-left">Description</th>
-                      <th className="border border-gray-300 px-2 sm:px-4 py-2 text-left">GST Details</th>
-                      <th className="border border-gray-300 px-2 sm:px-4 py-2 text-left">Status</th>
-                      <th className="border border-gray-300 px-2 sm:px-4 py-2 text-left">Date</th>
+                      <th className="border border-gray-300 px-2 sm:px-4 py-2 text-left">
+                        Type
+                      </th>
+                      <th className="border border-gray-300 px-2 sm:px-4 py-2 text-left">
+                        Amount (₹)
+                      </th>
+                      <th className="border border-gray-300 px-2 sm:px-4 py-2 text-left">
+                        Description
+                      </th>
+                      <th className="border border-gray-300 px-2 sm:px-4 py-2 text-left">
+                        GST Details
+                      </th>
+                      <th className="border border-gray-300 px-2 sm:px-4 py-2 text-left">
+                        Status
+                      </th>
+                      <th className="border border-gray-300 px-2 sm:px-4 py-2 text-left">
+                        Date
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {ledger.map((entry) => (
-                      <tr key={`${entry.type}-${entry.id}`} className="hover:bg-gray-50">
+                      <tr
+                        key={`${entry.type}-${entry.id}`}
+                        className="hover:bg-gray-50"
+                      >
                         <td className="border border-gray-300 px-2 sm:px-4 py-2 capitalize">
-                          {entry.type === 'work'
-                            ? `Work (${entry.adjustment_type === 'credit' ? 'addition' : 'deduction'})`
-                            : entry.type === 'extra_work'
-                              ? 'extra work'
-                            : entry.type === 'adjustment'
-                              ? 'cancelled work'
-                              : entry.type}
+                          {entry.type === "work"
+                            ? `Work (${entry.adjustment_type === "credit"
+                              ? "addition"
+                              : "deduction"
+                            })`
+                            : entry.type === "extra_work"
+                              ? "extra work"
+                              : entry.type === "adjustment"
+                                ? "cancelled work"
+                                : entry.type}
                         </td>
                         <td className="border border-gray-300 px-2 sm:px-4 py-2">
-                          {entry.type === 'charge'
-                            ? `₹${(entry.total_amount ?? 0).toLocaleString('en-IN')}`
-                            : entry.type === 'work' && entry.adjustment_type === 'debit'
-                            ? `-₹${entry.amount.toLocaleString('en-IN')}`
-                            : entry.type === 'work' && entry.adjustment_type === 'credit'
-                            ? `₹${entry.amount.toLocaleString('en-IN')}`
-                            : `₹${entry.amount.toLocaleString('en-IN')}`}
-                        </td>
-                        <td className="border border-gray-300 px-2 sm:px-4 py-2">{entry.description}</td>
-                        <td className="border border-gray-300 px-2 sm:px-4 py-2">
-                          {entry.type === 'charge'
-                            ? `GST ${entry.gst_rate ?? 0}% • GST ₹${Number(entry.gst_amount || 0).toLocaleString('en-IN')} • Gross ₹${Number(entry.total_amount || 0).toLocaleString('en-IN')}`
-                            : '—'}
+                          {entry.type === "charge"
+                            ? `₹${(entry.total_amount ?? 0).toLocaleString(
+                              "en-IN"
+                            )}`
+                            : entry.type === "work" &&
+                              entry.adjustment_type === "debit"
+                              ? `-₹${entry.amount.toLocaleString("en-IN")}`
+                              : entry.type === "work" &&
+                                entry.adjustment_type === "credit"
+                                ? `₹${entry.amount.toLocaleString("en-IN")}`
+                                : `₹${entry.amount.toLocaleString("en-IN")}`}
                         </td>
                         <td className="border border-gray-300 px-2 sm:px-4 py-2">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${
-                            entry.status === 'approved'
-                              ? 'bg-green-100 text-green-800'
-                              : entry.status === 'rejected'
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-yellow-100 text-yellow-800'
-                          }`}>
-                            {entry.status}
-                          </span>
+                          {entry.description}
                         </td>
                         <td className="border border-gray-300 px-2 sm:px-4 py-2">
-                          {new Date(entry.created_at).toLocaleDateString('en-IN')}
+                          {entry.type === "charge"
+                            ? `GST ${entry.gst_rate ?? 0}% • GST ₹${Number(
+                              entry.gst_amount || 0
+                            ).toLocaleString("en-IN")} • Gross ₹${Number(
+                              entry.total_amount || 0
+                            ).toLocaleString("en-IN")}`
+                            : "—"}
+                        </td>
+                        <td className="border border-gray-300 px-2 sm:px-4 py-2">
+                          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                            <span
+                              className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${entry.status === "approved"
+                                ? "bg-green-100 text-green-800"
+                                : entry.status === "rejected"
+                                  ? "bg-red-100 text-red-800"
+                                  : "bg-yellow-100 text-yellow-800"
+                                }`}
+                            >
+                              {entry.status}
+                            </span>
+
+                            {entry.status === "approved" &&
+                              [
+                                "Payment via online",
+                                "Payment via cash",
+                              ].includes(entry.description) && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    downloadPaymentReceipt({
+                                      receiptNo: `I${entry.client_id}${entry.project_id}${entry.id}`,
+                                      projectName: selectedProject.project_name,
+                                      amount: entry.amount,
+                                      paymentMethod: entry.description.includes("online")
+                                        ? "Online"
+                                        : "Cash",
+                                      paymentDate: new Date(entry.created_at).toLocaleDateString("en-IN"),
+
+                                      customerName: entry.customer_name,
+                                      customerPhone: entry.customer_phone,
+                                    });
+                                  }}
+                                  className="px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition"
+                                >
+                                  Receipt
+                                </button>
+                              )}
+                          </div>
+                        </td>
+                        <td className="border border-gray-300 px-2 sm:px-4 py-2">
+                          {new Date(entry.created_at).toLocaleDateString(
+                            "en-IN"
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -281,13 +394,92 @@ const InteriorPayments = () => {
           </div>
         </div>
       )}
+      {/* Installments Modal */}
+      {showInstallments && selectedProject && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-3 sm:p-4">
+          <div className="bg-white rounded-lg w-full max-w-lg sm:max-w-2xl max-h-[90vh] flex flex-col shadow-lg">
+            {/* Header */}
+            <div className="p-4 border-b">
+              <h2 className="text-lg sm:text-xl font-bold text-[#295A47]">
+                Pay your Installments - {selectedProject.project_name}
+              </h2>
+            </div>
+
+            {/* Scrollable Body */}
+            <div className="overflow-y-auto p-4 space-y-3">
+              <div className="bg-yellow-50 border border-yellow-300 text-yellow-800 p-3 rounded-lg text-xs sm:text-sm">
+                <p className="font-semibold mb-1">⚡ Cashback Offer</p>
+                <p>
+                  Pay all of your due installments at least{" "}
+                  <b>7 days before the due date</b> and get a cashback of up to{" "}
+                  <b>1% of the total project amount</b>.
+                </p>
+              </div>
+              {[1, 2, 3, 4, 5].map((n) => (
+                <div
+                  key={n}
+                  className="border p-3 rounded-lg text-sm sm:text-base"
+                >
+                  <div className="flex justify-between items-center mb-1">
+                    <p className="font-semibold">Installment {n}</p>
+
+                    {installments[`p${n}_paid_amount`] && (
+                      <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">
+                        Paid
+                      </span>
+                    )}
+                  </div>
+
+                  <p className="text-gray-600">
+                    Due Date: {installments[`p${n}_date`] || "-"}
+                  </p>
+                  <p className="text-gray-600">
+                    Due Amount: ₹{installments[`p${n}_amount`] || 0}
+                  </p>
+                  <p className="text-gray-600">
+                    Payment  Status: {installments[`p${n}_status`] || "Pending"}
+                  </p>
+
+                  {!installments[`p${n}_paid_amount`] && (
+                    <button
+                      className="mt-2 w-full sm:w-auto px-4 py-1 bg-[#295A47] text-white rounded disabled:opacity-50"
+                      disabled={!installments[`p${n}_amount`]}
+                      onClick={() => {
+                        const amt = installments[`p${n}_amount`] || "";
+                        setSelectedInstallmentAmount(amt);
+                        setPaymentAmount(amt);
+                        setShowInstallments(false);
+                        setShowPayment(true);
+                      }}
+                    >
+                      PAY
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t flex justify-end">
+              <button
+                onClick={() => setShowInstallments(false)}
+                className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Payment Modal */}
       {showPayment && selectedProject && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="p-4 sm:p-6">
-              <h2 className="text-2xl font-bold text-[#295A47] mb-4">Make Payment - {selectedProject.project_name}</h2>
+              <h2 className="text-2xl font-bold text-[#295A47] mb-4">
+                Make Payment - {selectedProject.project_name}
+              </h2>
 
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -311,8 +503,10 @@ const InteriorPayments = () => {
                     <input
                       type="radio"
                       value="cash"
-                      checked={paymentMethod === 'cash'}
-                      onChange={(e) => setPaymentMethod(e.target.value as 'cash')}
+                      checked={paymentMethod === "cash"}
+                      onChange={(e) =>
+                        setPaymentMethod(e.target.value as "cash")
+                      }
                       className="mr-2"
                     />
                     Cash
@@ -321,8 +515,10 @@ const InteriorPayments = () => {
                     <input
                       type="radio"
                       value="online"
-                      checked={paymentMethod === 'online'}
-                      onChange={(e) => setPaymentMethod(e.target.value as 'online')}
+                      checked={paymentMethod === "online"}
+                      onChange={(e) =>
+                        setPaymentMethod(e.target.value as "online")
+                      }
                       className="mr-2"
                     />
                     Online
@@ -330,24 +526,39 @@ const InteriorPayments = () => {
                 </div>
               </div>
 
-              {paymentMethod === 'cash' ? (
+              {paymentMethod === "cash" ? (
                 <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-                  <h4 className="font-semibold text-green-800 mb-2">Cash Payment</h4>
+                  <h4 className="font-semibold text-green-800 mb-2">
+                    Cash Payment
+                  </h4>
                   <p className="text-sm text-green-700">
-                    Please contact Mr. John Bor at 7044400100 for payment status details.
-                    Your payment will be approved by our superadmin shortly.
+                    Please contact Mr. John Bor at 7044400100 for payment status
+                    details. Your payment will be approved by our superadmin
+                    shortly.
                   </p>
                 </div>
               ) : (
                 <div className="mb-4">
                   <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg mb-4">
-                    <h4 className="font-semibold text-blue-800 mb-2">Bank Details</h4>
+                    <h4 className="font-semibold text-blue-800 mb-2">
+                      Bank Details
+                    </h4>
                     <div className="text-sm text-blue-700 space-y-1">
-                      <p><strong>Bank:</strong> HDFC</p>
-                      <p><strong>A/C No:</strong> 50200112029048</p>
-                      <p><strong>IFSC Code:</strong> HDFC0004283</p>
-                      <p><strong>Branch:</strong> BAGHAJATIN</p>
-                      <p><strong>Name:</strong> KAYAPALAT</p>
+                      <p>
+                        <strong>Bank:</strong> HDFC
+                      </p>
+                      <p>
+                        <strong>A/C No:</strong> 50200112029048
+                      </p>
+                      <p>
+                        <strong>IFSC Code:</strong> HDFC0005690
+                      </p>
+                      <p>
+                        <strong>Branch:</strong> BAGHAJATIN
+                      </p>
+                      <p>
+                        <strong>Name:</strong> KAYAPALAT
+                      </p>
                     </div>
                     <div className="mt-4 flex justify-center">
                       <img
@@ -360,12 +571,15 @@ const InteriorPayments = () => {
 
                   <div className="mb-4">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Upload Payment Proof <span className="text-red-500">*</span>
+                      Upload Payment Proof{" "}
+                      <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="file"
                       accept="image/*,.pdf"
-                      onChange={(e) => setTransactionProof(e.target.files?.[0] || null)}
+                      onChange={(e) =>
+                        setTransactionProof(e.target.files?.[0] || null)
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                     />
                   </div>
@@ -376,7 +590,7 @@ const InteriorPayments = () => {
                 <button
                   onClick={() => {
                     setShowPayment(false);
-                    setPaymentAmount('');
+                    setPaymentAmount("");
                     setTransactionProof(null);
                   }}
                   className="px-3 py-2 sm:px-4 sm:py-2 bg-gray-300 rounded hover:bg-gray-400 text-sm sm:text-base"
@@ -386,10 +600,13 @@ const InteriorPayments = () => {
                 </button>
                 <button
                   onClick={handlePaymentSubmit}
-                  disabled={submitting || (paymentMethod === 'online' && !transactionProof)}
+                  disabled={
+                    submitting ||
+                    (paymentMethod === "online" && !transactionProof)
+                  }
                   className="px-3 py-2 sm:px-4 sm:py-2 bg-[#295A47] text-white rounded hover:bg-[#1e3d32] disabled:opacity-50 text-sm sm:text-base"
                 >
-                  {submitting ? 'Submitting...' : 'Submit Payment'}
+                  {submitting ? "Submitting..." : "Submit Payment"}
                 </button>
               </div>
             </div>

@@ -28,7 +28,8 @@ export interface Design {
   designer_name?: string;
   client_id: string;
   client_name: string;
-  image_path: string;
+  image_path: string | null;
+  "2d_pdf_path"?: string | null;
   room_name: string;
   product_name: string;
   timestamp: string;

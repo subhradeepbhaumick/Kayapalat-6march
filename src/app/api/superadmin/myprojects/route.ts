@@ -549,11 +549,13 @@ export async function POST(req: Request) {
       const kolkataNow = new Date(
         new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
       );
-
+      const paid_from_cashInHand = paid_by === "myself" ? 1 : 0;
+      console.log("paid_by =", paid_by);
+      console.log("paid_from_cashInHand =", paid_from_cashInHand);
       await executeQuery(
         `INSERT INTO project_material_expenses_supervisor
-         (appointment_id, added_by, labour_id, title, quantity, per_amount, total_amount, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+     (appointment_id, added_by, labour_id, title, quantity, per_amount, total_amount,paid_from_cashInHand, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?,?)`,
         [
           appointment_id,
           added_by,
@@ -562,6 +564,7 @@ export async function POST(req: Request) {
           quantity,
           per_amount,
           total_amount,
+          paid_from_cashInHand,
           kolkataNow,
         ]
       );

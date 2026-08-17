@@ -9,6 +9,9 @@ import {
   History,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
+import { toast } from "react-hot-toast";
 
 interface Space {
   space_type: string;
@@ -16,7 +19,7 @@ interface Space {
   price: number;
   booking_status: string;
 }
-
+import DisplayAgreementModal from "@/components/DisplayAgreementModal";
 export default function BusinessBrandBookMySpace() {
   const { data: session, status } = useSession();
   const [zoom, setZoom] = useState(1);
@@ -30,6 +33,9 @@ export default function BusinessBrandBookMySpace() {
   const [pictureZoom, setPictureZoom] = useState(1);
   const [picturePan, setPicturePan] = useState({ x: 0, y: 0 });
   const [isPictureDragging, setIsPictureDragging] = useState(false);
+  const [displayAgreementFile, setDisplayAgreementFile] = useState<File | null>(
+    null
+  );
   const [lastPictureMousePos, setLastPictureMousePos] = useState({
     x: 0,
     y: 0,
@@ -48,11 +54,12 @@ export default function BusinessBrandBookMySpace() {
   const [timePeriod, setTimePeriod] = useState(6);
   const [advance, setAdvance] = useState(0);
   const [transactionProof, setTransactionProof] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [totalCost, setTotalCost] = useState(0);
   const [finalCost, setFinalCost] = useState(0);
   const [showBookingHistory, setShowBookingHistory] = useState(false);
   const [bookings, setBookings] = useState<any[]>([]);
-
+  const [showAgreementModal, setShowAgreementModal] = useState(false);
   const images = [
     "/showroom wall1.bmp",
     "/showroom wall2.jpeg",
@@ -96,6 +103,11 @@ export default function BusinessBrandBookMySpace() {
       fetchSpaces();
     }
   }, [status]);
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
 
   const handleZoomIn = () => {
     setZoom((prev) => Math.min(prev + 0.25, 3));
@@ -127,7 +139,15 @@ export default function BusinessBrandBookMySpace() {
   const handleMouseUp = () => {
     setIsDragging(false);
   };
+  const formatDate = (dateStr: string | null) => {
+    if (!dateStr) return "N/A";
 
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return "N/A";
+
+    return date.toLocaleDateString("en-GB");
+    // en-GB → dd/mm/yyyy format
+  };
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length === 2) {
       const touch1 = e.touches[0];
@@ -213,7 +233,182 @@ export default function BusinessBrandBookMySpace() {
       alert("Error checking space availability");
     }
   };
+  const handleGenerateInvoice = (space: any) => {
+    if (!space.transaction_proof) {
+      toast.error("Transaction proof required");
+      return;
+    }
 
+    try {
+      const doc = new jsPDF();
+
+      const PAGE_WIDTH = doc.internal.pageSize.width;
+
+      // ================= HEADER =================
+      doc.setFontSize(20);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(41, 90, 71);
+      doc.text("KAYAPALAT", PAGE_WIDTH / 2, 20, { align: "center" });
+
+      doc.setFontSize(11);
+      doc.setTextColor(0);
+      doc.text("Interior Studio Invoice", PAGE_WIDTH / 2, 28, {
+        align: "center",
+      });
+
+      // ================= ADDRESS =================
+      doc.setFontSize(9);
+      doc.setTextColor(80);
+
+      const addressLines = [
+        "Kayapalat Showroom",
+        "1160 Chadpur Poleghat, Mouza 80",
+        "P.O.- Malancha, P.S.- Sonarpur",
+        "Kolkata - 700145",
+        "India",
+      ];
+
+      addressLines.forEach((line, index) => {
+        doc.text(line, PAGE_WIDTH / 2, 34 + index * 5, {
+          align: "center",
+        });
+      });
+
+      // ================= INVOICE INFO =================
+      const invoiceNo = space.invoice_id || "N/A";
+      const date = new Date().toLocaleString("en-IN");
+
+      doc.setFontSize(10);
+      doc.text(`Invoice No: ${invoiceNo}`, 14, 40);
+      doc.text(`Date: ${date}`, PAGE_WIDTH - 14, 40, { align: "right" });
+
+      // ================= CLIENT / DEALER =================
+      doc.setFont("helvetica", "bold");
+      doc.text("Booking Details", 14, 55);
+
+      doc.setFont("helvetica", "normal");
+
+      doc.text(`Company: ${space.client_name || "N/A"}`, 14, 63);
+      doc.text(`Dealer ID: ${space.dealer_id || "N/A"}`, 14, 71);
+      doc.text(
+        `Booking Status: ${space.booking_status || "Available"}`,
+        14,
+        79
+      );
+
+      // ================= TABLE =================
+      const tableColumns = [
+        "Space Type",
+        "Size (Sqft)",
+        "Price(Per Sqft)",
+        "Booking Duration (Months)",
+      ];
+
+      const tableRows = [
+        [
+          space.space_type,
+          space.size,
+          `Rs.${space.price?.toLocaleString() || 0}`,
+          space.time_period || "-",
+        ],
+      ];
+
+      autoTable(doc, {
+        head: [tableColumns],
+        body: tableRows,
+        startY: 90,
+        theme: "grid",
+        styles: {
+          fontSize: 9,
+          cellPadding: 3,
+        },
+        headStyles: {
+          fillColor: [41, 90, 71],
+          textColor: 255,
+        },
+      });
+
+      // ================= SUMMARY =================
+      const finalY = (doc as any).lastAutoTable.finalY + 10;
+
+      doc.setFont("helvetica", "bold");
+      doc.text("Payment Summary", 14, finalY);
+
+      doc.setFont("helvetica", "normal");
+
+      doc.text(
+        `Booking Cost: Rs. ${space.booking_cost?.toLocaleString() || 0}`,
+        14,
+        finalY + 8
+      );
+      doc.text(
+        `Advance Paid: Rs. ${space.advance?.toLocaleString() || 0}`,
+        14,
+        finalY + 16
+      );
+      // ✅ SHOW DISCOUNT ONLY IF EXISTS
+      let nextY = finalY + 24;
+
+      if (space.discounted_price != null && space.discounted_price > 0) {
+        doc.text(
+          `Discount: Rs. ${space.discounted_price.toLocaleString()}`,
+          14,
+          nextY
+        );
+        nextY += 8; // shift next line down
+      }
+      doc.text(
+        `Due Amount: Rs. ${space.due?.toLocaleString() || 0}`,
+        14,
+        nextY
+      );
+
+      // ================= DATES =================
+      doc.text(
+        `Booking Date: ${formatDate(space.booking_date)}`,
+        PAGE_WIDTH - 14,
+        finalY + 8,
+        { align: "right" }
+      );
+
+      doc.text(
+        `Expiry Date: ${formatDate(space.expire_date)}`,
+        PAGE_WIDTH - 14,
+        finalY + 16,
+        { align: "right" }
+      );
+
+      // ================= FOOTER =================
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "bold");
+      doc.text("Thank you for your business!", PAGE_WIDTH / 2, finalY + 40, {
+        align: "center",
+      });
+
+      doc.setFont("helvetica", "normal");
+      doc.text(
+        "Terms & Conditions: Booking once confirmed is non-refundable.",
+        PAGE_WIDTH / 2,
+        finalY + 48,
+        { align: "center" }
+      );
+
+      doc.text(
+        `Generated on ${new Date().toLocaleString("en-IN")}`,
+        PAGE_WIDTH / 2,
+        finalY + 56,
+        { align: "center" }
+      );
+
+      // ================= SAVE =================
+      doc.save(`Showroom_Invoice_${space.space_type}_${Date.now()}.pdf`);
+
+      toast.success("Invoice generated successfully!");
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to generate invoice");
+    }
+  };
   const handleBookSubmit = async () => {
     if (!dealerId || !companyName || advance <= 0 || !transactionProof) {
       alert("Please fill in all fields");
@@ -339,6 +534,40 @@ export default function BusinessBrandBookMySpace() {
       setPictureZoom(newZoom);
     }
   };
+  const handleUploadAgreement = async () => {
+    if (!displayAgreementFile) {
+      toast.error("Please select a file first");
+      return;
+    }
+
+    if (!selectedSpace) {
+      toast.error("Please select a space_type before uploading");
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append("file", displayAgreementFile); // backend expects "file"
+      formData.append("space_type", selectedSpace);
+
+      const res = await fetch("/api/generate-agreement/upload-agreement", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        toast.success("Agreement uploaded successfully!");
+        setDisplayAgreementFile(null);
+      } else {
+        toast.error(data.error || "Upload failed");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Something went wrong");
+    }
+  };
 
   const handlePictureTouchEnd = () => {
     setPictureInitialDistance(0);
@@ -359,7 +588,11 @@ export default function BusinessBrandBookMySpace() {
       alert("Error fetching booking history");
     }
   };
-
+  const filteredSpaces = spaces.filter(
+    (space: any) =>
+      space.dealer_id?.toString() === session?.user?.id?.toString() &&
+      space.booking_status === "pending"
+  );
   return (
     <>
       <style>{`
@@ -505,6 +738,98 @@ export default function BusinessBrandBookMySpace() {
               </p>
             </div>
           </div>
+          {/* Display Agreement Section */}
+          <div className="bg-white rounded-lg shadow-lg p-6 mt-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
+              Display Agreement
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Download Section */}
+              <div className="p-6 border rounded-lg bg-blue-50 text-center">
+                <h3 className="text-lg font-semibold text-blue-900 mb-4">
+                  Download Agreement Form
+                </h3>
+                <p className="text-red-600 text-sm mb-4 font-medium">
+                  First Book your space,then carefully fill the form for that space and ensure your signature is clearly
+                  visible in the agreement. If not, please try again.
+                </p>
+                <button
+                  onClick={() => setShowAgreementModal(true)}
+                  className="inline-block bg-red-600 text-white px-6 py-2 rounded-md hover:bg-red-700 transition"
+                >
+                  Generate Agreement
+                </button>
+              </div>
+
+              {/* Upload Section */}
+              {/* Upload Section */}
+              <div className="p-6 border rounded-lg bg-green-50 text-center">
+                <h3 className="text-lg font-semibold text-green-900 mb-2">
+                  Upload Filled Agreement
+                </h3>
+
+                {/* ✅ RED WARNING TEXT */}
+                <p className="text-sm text-red-600 font-medium mb-4">
+                  ⚠️ Please select the correct space for which you are uploading
+                  the agreement. If the selected space does not match, your
+                  agreement will be rejected.
+                </p>
+
+                <select
+                  value={selectedSpace}
+                  onChange={(e) => setSelectedSpace(e.target.value)}
+                  className="w-full mb-3 px-3 py-2 border rounded"
+                >
+                  <option value="">Select Space for Agreement</option>
+
+                  {filteredSpaces.length === 0 ? (
+                    <option disabled>No pending spaces available</option>
+                  ) : (
+                    filteredSpaces.map((space: any) => (
+                      <option key={space.space_type} value={space.space_type}>
+                        {space.space_type}
+                      </option>
+                    ))
+                  )}
+                </select>
+                <div className="relative">
+                  <input
+                    type="file"
+                    accept=".pdf"
+                    onChange={(e) => {
+                      setDisplayAgreementFile(e.target.files?.[0] || null);
+                    }}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+
+                  <div className="w-full p-6 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50 hover:bg-gray-100 cursor-pointer">
+                    <p className="text-sm text-gray-600">
+                      Click to upload or drag & drop
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      PDF (Max 10MB)
+                    </p>
+                  </div>
+                </div>
+
+                {displayAgreementFile && (
+                  <>
+                    <p className="mt-3 text-sm text-green-700 font-medium">
+                      Selected: {displayAgreementFile.name}
+                    </p>
+
+                    <button
+                      onClick={handleUploadAgreement}
+                      className="mt-3 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+                    >
+                      Upload Agreement
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
 
           {/* Space Details Section */}
           <div className="bg-white rounded-lg shadow-lg p-6 mt-8">
@@ -540,9 +865,10 @@ export default function BusinessBrandBookMySpace() {
                       <div
                         key={space.space_type}
                         className={`flex justify-between items-center p-2 rounded ${
-                          space.booking_status === 'pending' || space.booking_status === 'booked'
-                            ? 'bg-red-700 border border-red-500 '
-                            : 'bg-green-700 border border-green-500'
+                          space.booking_status === "pending" ||
+                          space.booking_status === "booked"
+                            ? "bg-red-700 border border-red-500 "
+                            : "bg-green-700 border border-green-500"
                         }`}
                       >
                         <span className="text-white font-medium">
@@ -669,7 +995,7 @@ export default function BusinessBrandBookMySpace() {
                     Estimate
                   </h3>
                   <p className="text-blue-800 font-medium">
-                    Monthly Cost{" "}(Excluded GST): 
+                    Monthly Cost (Excluded GST):
                     <span className="text-lg font-bold">
                       ₹{estimate.toLocaleString("en-IN")}
                     </span>
@@ -836,15 +1162,25 @@ export default function BusinessBrandBookMySpace() {
                     Bank Details for Payment
                   </h4>
                   <div className="text-sm text-green-800 space-y-1">
-                    <p><strong>Bank:</strong> HDFC</p>
-                    <p><strong>A/C No:</strong> 50200112029048</p>
-                    <p><strong>IFSC Code:</strong> HDFC0004283</p>
-                    <p><strong>Branch:</strong> BAGHAJATIN</p>
-                    <p><strong>Name:</strong> KAYAPALAT</p>
+                    <p>
+                      <strong>Bank:</strong> HDFC
+                    </p>
+                    <p>
+                      <strong>A/C No:</strong> 50200112029048
+                    </p>
+                    <p>
+                      <strong>IFSC Code:</strong> HDFC0005690
+                    </p>
+                    <p>
+                      <strong>Branch:</strong> BAGHAJATIN
+                    </p>
+                    <p>
+                      <strong>Name:</strong> KAYAPALAT
+                    </p>
                   </div>
                   <div className="mt-4 flex justify-center">
                     <img
-                      src="/Kayapalat Payment Qr .jpeg"
+                      src="/kayapalat_payment_qr.jpeg"
                       alt="Kayapalat Payment QR Code"
                       className="max-w-xs h-auto rounded-lg shadow-md"
                     />
@@ -871,9 +1207,16 @@ export default function BusinessBrandBookMySpace() {
                     <input
                       type="file"
                       accept="image/*,.pdf"
-                      onChange={(e) =>
-                        setTransactionProof(e.target.files?.[0] || null)
-                      }
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] || null;
+                        setTransactionProof(file);
+                        if (file) {
+                          const url = URL.createObjectURL(file);
+                          setPreviewUrl(url);
+                        } else {
+                          setPreviewUrl(null);
+                        }
+                      }}
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                     />
                     <div className="w-full p-4 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer text-center">
@@ -897,11 +1240,26 @@ export default function BusinessBrandBookMySpace() {
                         </span>{" "}
                         or drag and drop
                       </p>
-                      <p className="text-xs text-gray-500">
-                        PNG, JPG up to 10MB
-                      </p>
                     </div>
                   </div>
+                  {previewUrl && (
+                    <div className="mt-4">
+                      <p className="text-sm font-medium mb-2">Preview:</p>
+
+                      {transactionProof?.type === "application/pdf" ? (
+                        <iframe
+                          src={previewUrl}
+                          className="w-full h-64 border rounded"
+                        />
+                      ) : (
+                        <img
+                          src={previewUrl}
+                          alt="Transaction Proof Preview"
+                          className="max-h-64 rounded border"
+                        />
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex justify-end gap-2">
@@ -950,86 +1308,116 @@ export default function BusinessBrandBookMySpace() {
                 </div>
 
                 {bookings.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse border border-gray-300">
-                      <thead>
-                        <tr className="bg-gray-50">
-                          <th className="border border-gray-300 px-4 py-2 text-center">
-                            Space Type
-                          </th>
-                          <th className="border border-gray-300 px-4 py-2 text-center">
-                            Company Name
-                          </th>
-                          <th className="border border-gray-300 px-4 py-2 text-center">
-                            Booking Date
-                          </th>
-                          <th className="border border-gray-300 px-4 py-2 text-center">
-                            Time Period
-                          </th>
-                          <th className="border border-gray-300 px-4 py-2 text-center">
-                            Expiry Date
-                          </th>
-                          <th className="border border-gray-300 px-4 py-2 text-center">
-                            Total Cost
-                          </th>
-                          <th className="border border-gray-300 px-4 py-2 text-center">
-                            Due Amount
-                          </th>
-                          <th className="border border-gray-300 px-4 py-2 text-center">
-                            Status
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {bookings.map((booking: any, index: number) => (
-                          <tr key={index} className="hover:bg-gray-50">
-                            <td className="border border-gray-300 px-4 py-2">
-                              {booking.space_type}
-                            </td>
-                            <td className="border border-gray-300 px-4 py-2">
-                              {booking.client_name}
-                            </td>
-                            <td className="border border-gray-300 px-4 py-2">
-                              {new Date(
-                                booking.booking_date
-                              ).toLocaleDateString()}
-                            </td>
-                            <td className="border border-gray-300 px-4 py-2">
-                              {booking.time_period} months
-                            </td>
-                            <td className="border border-gray-300 px-4 py-2">
-                              {new Date(
-                                booking.expire_date
-                              ).toLocaleDateString()}
-                            </td>
-                            <td className="border border-gray-300 px-4 py-2">
-                              {formatINR(booking.booking_cost)}
-                            </td>
-                            <td className="border border-gray-300 px-4 py-2">
-                              {formatINR(booking.due)}
-                            </td>
-                            <td className="border border-gray-300 px-4 py-2">
-                              <span
-                                className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                  booking.booking_status === "pending"
-                                    ? "bg-yellow-100 text-yellow-800"
-                                    : booking.booking_status === "booked"
-                                    ? "bg-green-100 text-green-800"
-                                    : "bg-red-100 text-red-800"
-                                }`}
-                              >
-                                {booking.booking_status === "pending"
-                                  ? "Pending"
-                                  : booking.booking_status === "booked"
-                                  ? "Booked"
-                                  : booking.booking_status}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  <>
+                    {/* 👇 ADD THIS HERE */}
+                    <div className="text-sm text-gray-500 mb-2 text-right">
+                      👉 Scroll right to view more →
+                    </div>
+                    <div className="relative">
+                      <div className="overflow-x-auto">
+                        <table className="min-w-max w-full border-collapse border border-gray-300">
+                          <thead>
+                            <tr className="bg-gray-50">
+                              <th className="border border-gray-300 px-4 py-2 text-center">
+                                Space Type
+                              </th>
+                              <th className="border border-gray-300 px-4 py-2 text-center">
+                                Company Name
+                              </th>
+                              <th className="border border-gray-300 px-4 py-2 text-center">
+                                Booking Date
+                              </th>
+                              <th className="border border-gray-300 px-4 py-2 text-center">
+                                Time Period
+                              </th>
+                              <th className="border border-gray-300 px-4 py-2 text-center">
+                                Expiry Date
+                              </th>
+                              <th className="border border-gray-300 px-4 py-2 text-center">
+                                Total Cost
+                              </th>
+                              <th className="border border-gray-300 px-4 py-2 text-center">
+                                Due Amount
+                              </th>
+                              <th className="border border-gray-300 px-4 py-2 text-center">
+                                Status
+                              </th>
+                              <th className="border border-gray-300 px-4 py-2 text-center">
+                                Invoice
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {bookings.map((booking: any, index: number) => (
+                              <tr key={index} className="hover:bg-gray-50">
+                                <td className="border border-gray-300 px-4 py-2">
+                                  {booking.space_type}
+                                </td>
+                                <td className="border border-gray-300 px-4 py-2">
+                                  {booking.client_name}
+                                </td>
+                                <td className="border border-gray-300 px-4 py-2">
+                                  {new Date(
+                                    booking.booking_date
+                                  ).toLocaleDateString()}
+                                </td>
+                                <td className="border border-gray-300 px-4 py-2">
+                                  {booking.time_period} months
+                                </td>
+                                <td className="border border-gray-300 px-4 py-2">
+                                  {new Date(
+                                    booking.expire_date
+                                  ).toLocaleDateString()}
+                                </td>
+                                <td className="border border-gray-300 px-4 py-2">
+                                  {formatINR(booking.booking_cost)}
+                                </td>
+                                <td className="border border-gray-300 px-4 py-2">
+                                  {formatINR(booking.due)}
+                                </td>
+                                <td className="border border-gray-300 px-4 py-2">
+                                  <span
+                                    className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                      booking.booking_status === "pending"
+                                        ? "bg-yellow-100 text-yellow-800"
+                                        : booking.booking_status === "booked"
+                                        ? "bg-green-100 text-green-800"
+                                        : "bg-red-100 text-red-800"
+                                    }`}
+                                  >
+                                    {booking.booking_status === "pending"
+                                      ? "Pending"
+                                      : booking.booking_status === "booked"
+                                      ? "Booked"
+                                      : booking.booking_status}
+                                  </span>
+                                </td>
+                                <td className="border border-gray-300 px-4 py-2 text-center">
+                                  <button
+                                    disabled={
+                                      booking.booking_status !== "confirmed"
+                                    }
+                                    className={`px-3 py-1 rounded text-white text-xs font-medium ${
+                                      booking.booking_status === "confirmed"
+                                        ? "bg-red-600 hover:bg-red-700 cursor-pointer"
+                                        : "bg-gray-300 cursor-not-allowed"
+                                    }`}
+                                    onClick={() =>
+                                      handleGenerateInvoice(booking)
+                                    }
+                                  >
+                                    Invoice
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      {/* 👇 ADD gradient indicator */}
+                      <div className="pointer-events-none absolute top-0 right-0 h-full w-8 bg-gradient-to-l from-white to-transparent"></div>
+                    </div>
+                  </>
                 ) : (
                   <p className="text-gray-500 text-center py-8">
                     No booking history found.
@@ -1040,6 +1428,10 @@ export default function BusinessBrandBookMySpace() {
           )}
         </div>
       </div>
+      <DisplayAgreementModal
+        isOpen={showAgreementModal}
+        onClose={() => setShowAgreementModal(false)}
+      />
     </>
   );
 }

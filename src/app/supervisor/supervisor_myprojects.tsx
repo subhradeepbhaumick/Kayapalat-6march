@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useEffect, useState, useMemo } from "react";
 import {
   MapPin,
@@ -21,6 +20,7 @@ import {
   Activity,
   PlusCircle,
 } from "lucide-react";
+import { toast } from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSession } from "next-auth/react";
@@ -28,7 +28,6 @@ import AddWorkerModal from "@/components/supervisor-modal/AddWorkerModal";
 import ExpenseModal from "@/components/supervisor-modal/ExpenseModal";
 import LabourExpenseTab from "@/components/supervisor-modal/LabourExpenseTab";
 import LabourExpenseModal from "@/components/supervisor-modal/LabourExpenseModal";
-
 interface Project {
   project_id: string;
   project_name: string;
@@ -40,17 +39,14 @@ interface Project {
   team_size: number;
   remaining_days: string;
 }
-
 const MyProjectsPage = () => {
   const router = useRouter();
-
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [editingStatusId, setEditingStatusId] = useState<string | null>(null);
-
   const handleStatusChange = async (
     projectId: string,
     newStatus: "Active" | "Completed" | "Pending"
@@ -63,7 +59,6 @@ const MyProjectsPage = () => {
         },
         body: JSON.stringify({ appointment_id: projectId, status: newStatus }),
       });
-
       if (response.ok) {
         setProjects((prevProjects) =>
           prevProjects.map((project) =>
@@ -79,7 +74,6 @@ const MyProjectsPage = () => {
       console.error("Error updating status:", error);
     }
   };
-
   const handleTeamSizeChange = async (
     projectId: string,
     newTeamSize: number
@@ -95,7 +89,6 @@ const MyProjectsPage = () => {
           today_labour: newTeamSize,
         }),
       });
-
       if (response.ok) {
         setProjects((prevProjects) =>
           prevProjects.map((project) =>
@@ -111,7 +104,6 @@ const MyProjectsPage = () => {
       console.error("Error updating team size:", error);
     }
   };
-
   const handleProgressChange = async (
     projectId: string,
     newProgress: number
@@ -127,7 +119,6 @@ const MyProjectsPage = () => {
           progress: newProgress,
         }),
       });
-
       if (response.ok) {
         setProjects((prevProjects) =>
           prevProjects.map((project) =>
@@ -145,7 +136,6 @@ const MyProjectsPage = () => {
   };
   const calculateRemainingDays = (end: string) => {
     if (!end || end === "N/A") return "N/A";
-
     const now = new Date();
     const formatter = new Intl.DateTimeFormat("en-CA", {
       timeZone: "Asia/Kolkata",
@@ -154,21 +144,16 @@ const MyProjectsPage = () => {
       day: "2-digit",
     });
     const todayStr = formatter.format(now);
-
     if (end === todayStr) {
       return "Should be completed by today";
     }
-
     const endDate = new Date(end);
     const todayDate = new Date(todayStr);
-
     const diffTime = endDate.getTime() - todayDate.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
     if (diffDays < 0) {
       return `Delayed Handover. End Date was ${end}`;
     }
-
     return `Ends in ${diffDays} days`;
   };
   useEffect(() => {
@@ -180,16 +165,14 @@ const MyProjectsPage = () => {
           const mappedProjects: Project[] = data.map((item: any) => {
             const startDate = item.start_date
               ? new Date(item.start_date).toLocaleDateString("en-CA", {
-                  timeZone: "Asia/Kolkata",
-                })
+                timeZone: "Asia/Kolkata",
+              })
               : "N/A";
-
             const endDate = item.end_date
               ? new Date(item.end_date).toLocaleDateString("en-CA", {
-                  timeZone: "Asia/Kolkata",
-                })
+                timeZone: "Asia/Kolkata",
+              })
               : "N/A";
-
             return {
               project_id: item.appointment_id,
               project_name: item.project_name || "",
@@ -212,10 +195,8 @@ const MyProjectsPage = () => {
         setLoading(false);
       }
     };
-
     fetchProjects();
   }, []);
-
   const filteredProjects = useMemo(() => {
     return projects.filter((project) => {
       const matchesSearch =
@@ -230,7 +211,6 @@ const MyProjectsPage = () => {
       return matchesSearch && matchesStatus;
     });
   }, [projects, searchQuery, statusFilter]);
-
   const stats = useMemo(() => {
     return {
       total: projects.length,
@@ -238,11 +218,9 @@ const MyProjectsPage = () => {
       completed: projects.filter((p) => p.status === "Completed").length,
     };
   }, [projects]);
-
   const handleEnterSite = (project: Project) => {
     setSelectedProject(project);
   };
-
   return (
     <div className="p-8 bg-gray-50 min-h-screen">
       {/* Header Section */}
@@ -262,7 +240,6 @@ const MyProjectsPage = () => {
               {stats.total}
             </span>
           </div>
-
           <div className="bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-100 flex flex-col items-center flex-1 min-w-[90px] sm:min-w-[100px]">
             <span className="text-xs text-gray-500 uppercase font-semibold">
               Active
@@ -271,7 +248,6 @@ const MyProjectsPage = () => {
               {stats.active}
             </span>
           </div>
-
           <div className="bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-100 flex flex-col items-center flex-1 min-w-[90px] sm:min-w-[100px]">
             <span className="text-xs text-gray-500 uppercase font-semibold">
               Done
@@ -282,7 +258,6 @@ const MyProjectsPage = () => {
           </div>
         </div>
       </div>
-
       {/* Filters */}
       <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-8 flex flex-col md:flex-row gap-4 items-center justify-between">
         <div className="relative w-full md:w-96">
@@ -309,7 +284,6 @@ const MyProjectsPage = () => {
           </select>
         </div>
       </div>
-
       {loading ? (
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#295A47]"></div>
@@ -324,8 +298,9 @@ const MyProjectsPage = () => {
               key={project.project_id}
               className="bg-white shadow-md rounded-xl p-6 border border-gray-100 hover:shadow-xl transition-all duration-300 flex flex-col"
             >
-              {/* Project Name */}
-              <div className="flex justify-between items-start mb-4">
+              {/* Project Name + Status */}
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 mb-4">
+                {/* Left Section (Project Info) */}
                 <div className="flex items-center gap-3">
                   <div className="p-3 bg-green-50 rounded-lg">
                     <Building2 className="text-[#295A47] w-6 h-6" />
@@ -339,82 +314,139 @@ const MyProjectsPage = () => {
                     </span>
                   </div>
                 </div>
-                <select
-                  value={project.status}
-                  onChange={(e) =>
-                    handleStatusChange(
-                      project.project_id,
-                      e.target.value as "Active" | "Completed" | "Pending"
-                    )
-                  }
-                  className={`px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide border-none outline-none cursor-pointer
-                  ${
-                    project.status === "Active"
-                      ? "bg-blue-100 text-blue-700"
-                      : project.status === "Completed"
-                      ? "bg-green-100 text-green-700"
-                      : "bg-yellow-100 text-yellow-700"
-                  }`}
-                >
-                  <option value="Active">Active</option>
-                  <option value="Completed">Completed</option>
-                  <option value="Pending">Pending</option>
-                </select>
+                {/* Right Section (Status Dropdown) */}
+                <div className="w-full sm:w-auto">
+                  <select
+                    value={project.status}
+                    onChange={(e) =>
+                      handleStatusChange(
+                        project.project_id,
+                        e.target.value as "Active" | "Completed" | "Pending"
+                      )
+                    }
+                    className={`w-full sm:w-auto px-3 py-2 rounded-full text-xs font-semibold uppercase tracking-wide border-none outline-none cursor-pointer
+      ${project.status === "Active"
+                        ? "bg-blue-100 text-blue-700"
+                        : project.status === "Completed"
+                          ? "bg-green-100 text-green-700"
+                          : "bg-yellow-100 text-yellow-700"
+                      }`}
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Pending">Pending</option>
+                  </select>
+                </div>
               </div>
-
               {/* Location */}
               <div className="flex items-center text-gray-600 mb-4 text-sm">
                 <MapPin size={16} className="mr-2 text-gray-400" />
                 {project.location}
               </div>
-
               {/* Progress Bar */}
               <div className="mb-4">
-                <div className="flex justify-between text-sm mb-1">
+                <div className="flex justify-between items-center text-sm mb-1">
                   <span className="text-gray-500">Progress</span>
-                  <input
-                    type="number"
-                    min={project.progress}
-                    value={project.progress}
-                    onChange={(e) => {
-                      const newProgress = parseInt(e.target.value) || 0;
-                      if (newProgress >= project.progress) {
-                        setProjects((prevProjects) =>
-                          prevProjects.map((p) =>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={project.progress}
+                      onChange={(e) => {
+                        let value = parseInt(e.target.value);
+                        if (isNaN(value)) value = 0;
+                        if (value > 100) value = 100;
+                        if (value < 0) value = 0;
+                        setProjects((prev) =>
+                          prev.map((p) =>
                             p.project_id === project.project_id
-                              ? { ...p, progress: newProgress }
+                              ? { ...p, progress: value }
                               : p
                           )
                         );
-                      }
-                    }}
-                    onBlur={(e) => {
-                      const newProgress = parseInt(e.target.value) || 0;
-                      if (newProgress >= project.progress) {
-                        handleProgressChange(project.project_id, newProgress);
-                      } else {
-                        // Reset to original if invalid
-                        setProjects((prevProjects) =>
-                          prevProjects.map((p) =>
-                            p.project_id === project.project_id
-                              ? { ...p, progress: project.progress }
-                              : p
-                          )
-                        );
-                      }
-                    }}
-                    className="font-semibold text-[#295A47] text-sm bg-transparent outline-none w-12"
-                  />
-                  <span className="text-gray-500">%</span>
+                      }}
+                      onBlur={(e) => {
+                        let value = parseInt(e.target.value);
+                        if (isNaN(value)) value = 0;
+                        if (value > 100) value = 100;
+                        if (value < 0) value = 0;
+                        // ❗ Restriction (cannot decrease)
+                        if (value < project.progress) {
+                          value = project.progress;
+                        }
+                        handleProgressChange(project.project_id, value);
+                      }}
+                      className="font-semibold text-[#295A47] text-sm bg-transparent outline-none w-12 text-right"
+                    />
+                    <span className="text-gray-500">%</span>
+                  </div>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
+                {/* Progress bar */}
+                <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
                   <div
                     className="bg-[#295A47] h-2 rounded-full transition-all duration-500"
-                    style={{ width: `${project.progress}%` }}
+                    style={{ width: `${Math.min(project.progress, 100)}%` }}
                   ></div>
                 </div>
+                {/* Slider */}
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={project.progress}
+                  // store starting value (no new variable needed)
+                  onMouseDown={(e) => {
+                    e.currentTarget.dataset.start = String(project.progress);
+                  }}
+                  onTouchStart={(e) => {
+                    e.currentTarget.dataset.start = String(project.progress);
+                  }}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value);
+                    setProjects((prev) =>
+                      prev.map((p) =>
+                        p.project_id === project.project_id
+                          ? { ...p, progress: value }
+                          : p
+                      )
+                    );
+                  }}
+                  onMouseUp={(e) => {
+                    let value = parseInt(e.currentTarget.value);
+                    const start = parseInt(
+                      e.currentTarget.dataset.start || "0"
+                    );
+                    // ❗ Restriction (cannot decrease)
+                    if (value < start) value = start;
+                    // snap back UI if needed
+                    setProjects((prev) =>
+                      prev.map((p) =>
+                        p.project_id === project.project_id
+                          ? { ...p, progress: value }
+                          : p
+                      )
+                    );
+                    handleProgressChange(project.project_id, value);
+                  }}
+                  onTouchEnd={(e) => {
+                    let value = parseInt(e.currentTarget.value);
+                    const start = parseInt(
+                      e.currentTarget.dataset.start || "0"
+                    );
+                    if (value < start) value = start;
+                    setProjects((prev) =>
+                      prev.map((p) =>
+                        p.project_id === project.project_id
+                          ? { ...p, progress: value }
+                          : p
+                      )
+                    );
+                    handleProgressChange(project.project_id, value);
+                  }}
+                  className="w-full cursor-pointer accent-[#295A47]"
+                />
               </div>
-
               {/* Stats Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                 <div className="bg-gray-50 p-3 rounded-lg">
@@ -456,7 +488,6 @@ const MyProjectsPage = () => {
                   {project.remaining_days}
                 </p>
               </div>
-
               {/* Buttons */}
               <div className="mt-auto flex gap-3">
                 <button
@@ -474,7 +505,6 @@ const MyProjectsPage = () => {
           ))}
         </div>
       )}
-
       {/* Project Dashboard Modal */}
       <AnimatePresence>
         {selectedProject && (
@@ -487,7 +517,6 @@ const MyProjectsPage = () => {
     </div>
   );
 };
-
 const ProjectModal = ({
   project,
   onClose,
@@ -521,21 +550,17 @@ const ProjectModal = ({
       alert("Enter Order ID");
       return;
     }
-
     try {
       const res = await fetch(
         `/api/supervisor/myprojects?type=order_details&o_id=${orderId}`
       );
-
       const data = await res.json();
-
       if (!data || !data.materials || data.materials.length === 0) {
         alert("Order not found or has no items.");
         setMaterials([]);
         setExpensePerAmount("");
         return;
       }
-
       setMaterials(data.materials || []); // ✅ important
       setExpensePerAmount(data.total_amount || "0");
       if (orderId) {
@@ -546,10 +571,8 @@ const ProjectModal = ({
       alert("An error occurred while fetching the order details.");
     }
   };
-
   const fetchLabourOptions = async () => {
     if (!project?.project_id) return;
-
     try {
       const res = await fetch(
         `/api/supervisor/myprojects?type=labour_summary&appointment_id=${project.project_id}`
@@ -566,11 +589,8 @@ const ProjectModal = ({
       setLabourOptions([]);
     }
   };
-
   type ExpenseType = "unit" | "sqft" | "labour" | "website";
-
   const [expenseType, setExpenseType] = useState<ExpenseType>("unit");
-
   // Fetch labour options when switching to labour type
   useEffect(() => {
     if (expenseType === "labour") {
@@ -583,13 +603,11 @@ const ProjectModal = ({
   const [labourExpenses, setLabourExpenses] = useState([]);
   const [showLabourExpenseModal, setShowLabourExpenseModal] = useState(false);
   const [editLabourExpense, setEditLabourExpense] = useState<any>(null);
-
   const fetchTasks = async () => {
     try {
       const res = await fetch(
         `/api/supervisor/myprojects?type=tasks&appointment_id=${project.project_id}`
       );
-
       if (res.ok) {
         const data = await res.json();
         setTasks(data.tasks || []);
@@ -603,7 +621,6 @@ const ProjectModal = ({
       const res = await fetch(
         `/api/supervisor/myprojects?type=activities&appointment_id=${project.project_id}`
       );
-
       if (res.ok) {
         const data = await res.json();
         setActivities(data.activities || []);
@@ -618,7 +635,6 @@ const ProjectModal = ({
   // 🔹 FETCH CHAT
   const fetchChat = async () => {
     if (!project?.project_id) return;
-
     try {
       const res = await fetch(
         `/api/supervisor/myprojects?type=chat&appointment_id=${project.project_id}`
@@ -631,7 +647,6 @@ const ProjectModal = ({
       console.error("Failed to fetch chat", err);
     }
   };
-
   // 🔹 AUTO FETCH WHEN TAB OPENS
   useEffect(() => {
     if (activeTab === "overview" && project?.project_id) {
@@ -646,26 +661,21 @@ const ProjectModal = ({
       return () => clearInterval(interval);
     }
   }, [activeTab, project.project_id]);
-
   // 🔹 SEND MESSAGE
   const sendChat = async () => {
     if (!chatInput && !selectedImage) return;
-
     const formData = new FormData();
     formData.append("type", "chat");
     formData.append("appointment_id", project.project_id);
     formData.append("message", chatInput);
-
     if (selectedImage) {
       formData.append("image", selectedImage);
     }
-
     try {
       await fetch("/api/supervisor/myprojects", {
         method: "POST",
         body: formData,
       });
-
       setChatInput("");
       setSelectedImage(null);
       fetchChat();
@@ -691,7 +701,6 @@ const ProjectModal = ({
     const absent = total - present;
     return { total, present, absent };
   }, [workers]);
-
   const filteredWorkers = useMemo(() => {
     if (labourFilter === "Present")
       return workers.filter((w) => w.present_tinytint === 1);
@@ -699,7 +708,6 @@ const ProjectModal = ({
       return workers.filter((w) => w.present_tinytint === 0);
     return workers;
   }, [workers, labourFilter]);
-
   useEffect(() => {
     if (activeTab === "labour" && project.project_id) {
       const fetchWorkers = async () => {
@@ -724,12 +732,9 @@ const ProjectModal = ({
       const res = await fetch(
         `/api/supervisor/myprojects?type=expenses&appointment_id=${project.project_id}`
       );
-
       if (res.ok) {
         const data = await res.json();
-
         console.log("EXPENSE DATA:", data); // debug once
-
         setExpenses(Array.isArray(data) ? data : data.expenses || []);
         setBudget(Number(data.budget) || 0);
         // 🔹 NEW VALUES FROM BACKEND
@@ -741,7 +746,6 @@ const ProjectModal = ({
       console.error("Failed to fetch expenses", err);
     }
   };
-
   useEffect(() => {
     if (activeTab === "expenses" && project.project_id) {
       fetchExpenses();
@@ -751,28 +755,37 @@ const ProjectModal = ({
     (sum, exp) => sum + Number(exp.total_amount),
     0
   );
-
   const remaining = budget - totalSpent;
-  const handleAddWorker = async (name: string, role: string) => {
+  const handleAddWorker = async (
+    name: string,
+    role: string,
+    phone: string,
+    imageFile?: File
+  ) => {
     if (!name || !role || !session?.user?.id) return;
-
     try {
+      const formData = new FormData();
+      formData.append("type", "labour");
+      formData.append("appointment_id", project.project_id);
+      formData.append("role", role);
+      formData.append("labour_name", name);
+      formData.append("phone", phone || "");
+      if (imageFile) {
+        formData.append("identity_image", imageFile);
+      }
       const res = await fetch("/api/supervisor/myprojects", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: "labour",
-          supervisor_id: session.user.id,
-          appointment_id: project.project_id,
-          role: role,
-          labour_name: name,
-          present_tinytint: 1,
-        }),
+        body: formData,
       });
-
       if (res.ok) {
-        const newWorker = await res.json();
-        setWorkers((prev) => [newWorker, ...prev]);
+        // Refresh workers list
+        const refreshRes = await fetch(
+          `/api/supervisor/myprojects?type=labour&appointment_id=${project.project_id}`
+        );
+        if (refreshRes.ok) {
+          const data = await refreshRes.json();
+          setWorkers(data);
+        }
       }
     } catch (error) {
       console.error("Failed to add worker", error);
@@ -789,27 +802,22 @@ const ProjectModal = ({
     }
     let quantity = 1;
     let per_amount = Number(expensePerAmount);
-
     if (expenseType === "unit" || expenseType === "sqft") {
       if (!expenseQuantity || !expensePerAmount) {
         alert("Please fill all fields");
         return;
       }
-
       quantity = Number(expenseQuantity);
       per_amount = Number(expensePerAmount);
     }
-
     if (expenseType === "labour" || expenseType === "website") {
       if (!expensePerAmount) {
         alert("Please enter amount");
         return;
       }
-
       quantity = 1;
       per_amount = Number(expensePerAmount);
     }
-
     try {
       const res = await fetch("/api/supervisor/myprojects", {
         method: "POST",
@@ -825,11 +833,9 @@ const ProjectModal = ({
           paid_by: paidBy,
         }),
       });
-
       if (res.ok) {
         await fetchExpenses();
         setShowExpenseModal(false);
-
         setExpenseTitle("");
         setExpenseQuantity("");
         setExpensePerAmount("");
@@ -850,7 +856,6 @@ const ProjectModal = ({
         second: "2-digit",
       })
       .replace("T", " ");
-
     try {
       const res = await fetch("/api/supervisor/myprojects", {
         method: "PUT",
@@ -862,18 +867,17 @@ const ProjectModal = ({
           updated_at: updatedAt,
         }),
       });
-
       if (res.ok) {
         const data = await res.json();
         setWorkers((prev) =>
           prev.map((w) =>
             w.id === workerId
               ? {
-                  ...w,
-                  present_tinytint: newStatus,
-                  updated_at:
-                    data.worker?.updated_at || new Date().toISOString(),
-                }
+                ...w,
+                present_tinytint: newStatus,
+                updated_at:
+                  data.worker?.updated_at || new Date().toISOString(),
+              }
               : w
           )
         );
@@ -882,10 +886,34 @@ const ProjectModal = ({
       console.error("Failed to update status", error);
     }
   };
-
+  const handleDeleteExpense = async (exp: any) => {
+    const confirmDelete = confirm(
+      "Are you sure you want to delete this expense?"
+    );
+    if (!confirmDelete) return;
+    try {
+      const response = await fetch(
+        `/api/supervisor/delete-supervisor-expense?id=${exp.id}&appointment_id=${exp.appointment_id}&labour_id=${exp.labour_id}`,
+        {
+          method: "DELETE",
+        }
+      );
+      const data = await response.json();
+      if (response.ok) {
+        toast.success("Expense deleted successfully");
+        setExpenses((prev: any) =>
+          prev.filter((item: any) => item.id !== exp.id)
+        );
+      } else {
+        toast.error(data.error || "Failed to delete");
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Something went wrong");
+    }
+  };
   const handleAddTask = async () => {
     if (newTaskText.trim() === "") return;
-
     try {
       const res = await fetch("/api/supervisor/myprojects", {
         method: "POST",
@@ -898,7 +926,6 @@ const ProjectModal = ({
           text: newTaskText,
         }),
       });
-
       if (res.ok) {
         setNewTaskText("");
         setShowNewTaskInput(false);
@@ -908,10 +935,8 @@ const ProjectModal = ({
       console.error("Failed to add task", error);
     }
   };
-
   const handleAddActivity = async () => {
     if (newActivityText.trim() === "") return;
-
     try {
       const res = await fetch("/api/supervisor/myprojects", {
         method: "POST",
@@ -925,7 +950,6 @@ const ProjectModal = ({
           details: newActivityDetails,
         }),
       });
-
       if (res.ok) {
         setNewActivityText("");
         setNewActivityDetails("");
@@ -936,7 +960,6 @@ const ProjectModal = ({
       console.error("Failed to add activity", err);
     }
   };
-
   const handleCompleteTask = async (taskId: number) => {
     try {
       const res = await fetch("/api/supervisor/myprojects", {
@@ -949,7 +972,6 @@ const ProjectModal = ({
           id: taskId,
         }),
       });
-
       if (res.ok) {
         fetchTasks();
         fetchActivities(); // optional: log completion
@@ -958,7 +980,6 @@ const ProjectModal = ({
       console.error("Failed to complete task", error);
     }
   };
-
   const tabs = [
     { id: "overview", label: "Overview", icon: LayoutDashboard },
     { id: "labour", label: "Labour", icon: Users },
@@ -966,7 +987,6 @@ const ProjectModal = ({
     { id: "issues", label: "Issues", icon: MessageSquare },
     { id: "labour_expense", label: "Labour Expense", icon: Wallet },
   ];
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 md:p-4 bg-black/60 backdrop-blur-sm">
       <motion.div
@@ -1001,18 +1021,16 @@ const ProjectModal = ({
               <X size={24} />
             </button>
           </div>
-
           <div className="px-4 md:px-6 pb-2 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-t border-white/10">
             <div className="flex items-center gap-1 overflow-x-auto pb-2 w-full">
               {tabs.map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 font-medium text-sm ${
-                    activeTab === tab.id
+                  className={`flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 font-medium text-sm ${activeTab === tab.id
                       ? "bg-white/10"
                       : "text-green-100 hover:bg-white/5"
-                  }`}
+                    }`}
                 >
                   <tab.icon size={16} />
                   {tab.label}
@@ -1033,7 +1051,6 @@ const ProjectModal = ({
             </div>
           </div>
         </div>
-
         <div className="flex flex-1 overflow-hidden">
           {/* Main Content Area */}
           <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 bg-gray-50">
@@ -1095,7 +1112,6 @@ const ProjectModal = ({
                     </p>
                   </div>
                 </div>
-
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
                   <div className="border border-gray-200 rounded-xl p-6">
                     <h4 className="font-bold text-gray-800 mb-4 flex items-center justify-between">
@@ -1121,7 +1137,6 @@ const ProjectModal = ({
                             className="border-b-2 focus:border-[#295A47] outline-none text-sm"
                             autoFocus
                           />
-
                           <textarea
                             value={newActivityDetails}
                             onChange={(e) =>
@@ -1131,7 +1146,6 @@ const ProjectModal = ({
                             className="border-b-2 focus:border-[#295A47] outline-none text-sm resize-none"
                             rows={2}
                           />
-
                           <div className="flex gap-2">
                             <button
                               onClick={handleAddActivity}
@@ -1225,7 +1239,6 @@ const ProjectModal = ({
                               )}
                             </p>
                           </div>
-
                           <button
                             onClick={() => handleCompleteTask(task.id)}
                             className="px-3 py-1 text-xs font-semibold text-white bg-green-600 rounded-md hover:bg-green-700 transition"
@@ -1239,7 +1252,6 @@ const ProjectModal = ({
                 </div>
               </div>
             )}
-
             {activeTab === "labour" && (
               <div className="space-y-4">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
@@ -1252,19 +1264,18 @@ const ProjectModal = ({
                         <button
                           key={filter}
                           onClick={() => setLabourFilter(filter)}
-                          className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
-                            labourFilter === filter
+                          className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${labourFilter === filter
                               ? "bg-white text-[#295A47] shadow-sm"
                               : "text-gray-500 hover:text-gray-700"
-                          }`}
+                            }`}
                         >
                           {filter}{" "}
                           <span className="ml-1 opacity-70">
                             {filter === "All"
                               ? labourStats.total
                               : filter === "Present"
-                              ? labourStats.present
-                              : labourStats.absent}
+                                ? labourStats.present
+                                : labourStats.absent}
                           </span>
                         </button>
                       ))}
@@ -1288,7 +1299,16 @@ const ProjectModal = ({
                           Role
                         </th>
                         <th className="p-4 text-sm font-semibold text-gray-600">
+                          Phone
+                        </th>
+                        <th className="p-4 text-sm font-semibold text-gray-600">
+                          Identity
+                        </th>
+                        <th className="p-4 text-sm font-semibold text-gray-600">
                           Status
+                        </th>
+                        <th className="p-4 text-sm font-semibold text-gray-600">
+                          Attendance
                         </th>
                         <th className="p-4 text-sm font-semibold text-gray-600">
                           Updated At
@@ -1314,6 +1334,27 @@ const ProjectModal = ({
                             <td className="p-4 text-sm text-gray-600">
                               {worker.role}
                             </td>
+                            <td className="p-4 text-sm text-gray-600">
+                              {worker.phone || ""}
+                            </td>
+                            <td className="p-4">
+                              {worker.identity_image ? (
+                                <img
+                                  src={worker.identity_image}
+                                  alt="ID"
+                                  className="w-12 h-16 object-cover rounded-lg border shadow-sm hover:scale-105 transition-transform cursor-pointer"
+                                  onClick={() =>
+                                    setPreviewImage(worker.identity_image)
+                                  }
+                                />
+                              ) : (
+                                <div className="w-12 h-16 bg-gray-100 rounded-lg flex items-center justify-center">
+                                  <span className="text-xs text-gray-400">
+                                    No ID
+                                  </span>
+                                </div>
+                              )}
+                            </td>
                             <td className="p-4">
                               {worker.present_tinytint === 1 ? (
                                 <div className="flex items-center gap-2">
@@ -1326,7 +1367,7 @@ const ProjectModal = ({
                                     }
                                     className="px-3 py-1 rounded text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200"
                                   >
-                                    Absent
+                                    Mark Absent
                                   </button>
                                 </div>
                               ) : (
@@ -1336,21 +1377,22 @@ const ProjectModal = ({
                                   }
                                   className="px-3 py-1 rounded text-xs font-medium bg-green-100 text-green-700 hover:bg-green-200"
                                 >
-                                  Present
+                                  Mark Present
                                 </button>
                               )}
                             </td>
+                            <td className="p-4 text-sm text-gray-600">{worker.total_present} days</td>
                             <td className="p-4 text-sm text-gray-600">
                               {worker.updated_at
                                 ? new Date(
-                                    worker.updated_at
-                                  ).toLocaleTimeString([], {
-                                    year: "numeric",
-                                    month: "short",
-                                    day: "2-digit",
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  })
+                                  worker.updated_at
+                                ).toLocaleTimeString([], {
+                                  year: "numeric",
+                                  month: "short",
+                                  day: "2-digit",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })
                                 : "N/A"}
                             </td>
                           </tr>
@@ -1361,7 +1403,6 @@ const ProjectModal = ({
                 </div>
               </div>
             )}
-
             {activeTab === "expenses" && (
               <div className="space-y-4">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
@@ -1409,14 +1450,12 @@ const ProjectModal = ({
                       ₹{cashInHand?.toLocaleString()}
                     </p>
                   </div>
-
                   <div className="p-4 border rounded-xl bg-gray-50">
                     <p className="text-xs text-gray-500">Spent</p>
                     <p className="text-lg font-bold text-red-600">
                       ₹{cashSpent?.toLocaleString()}
                     </p>
                   </div>
-
                   <div className="p-4 border rounded-xl bg-gray-50">
                     <p className="text-xs text-gray-500">Due</p>
                     <p className="text-lg font-bold text-green-600">
@@ -1433,7 +1472,7 @@ const ProjectModal = ({
                     expenses.map((exp: any) => (
                       <div
                         key={exp.id}
-                        className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border border-gray-200 rounded-xl hover:shadow-sm gap-2"
+                        className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border border-gray-200 rounded-xl hover:shadow-sm gap-3"
                       >
                         <div className="flex items-center gap-4">
                           <div className="p-2 bg-gray-100 rounded-lg text-gray-600">
@@ -1457,56 +1496,56 @@ const ProjectModal = ({
                             </p>
                           </div>
                         </div>
-                        <span className="font-bold text-gray-800">
-                          ₹{Number(exp.total_amount).toLocaleString()}
-                        </span>
+                        <div className="flex items-center gap-3">
+                          <span className="font-bold text-gray-800">
+                            ₹{Number(exp.total_amount).toLocaleString()}
+                          </span>
+                          <button
+                            onClick={() => handleDeleteExpense(exp)}
+                            className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg text-sm transition"
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </div>
                     ))
                   )}
                 </div>
               </div>
             )}
-
             {activeTab === "issues" && (
               <div className="space-y-4">
                 <h3 className="text-xl font-bold text-gray-800 mb-4">
                   Site Issues & Chat
                 </h3>
-
                 <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 h-[50vh] md:h-[400px] flex flex-col">
                   {/* Messages */}
                   <div className="flex-1 overflow-y-auto space-y-4 pr-2">
                     {chatMessages.map((msg: any) => {
                       const isMe = msg.sender_id === session?.user?.id;
-
                       return (
                         <div
                           key={msg.id}
-                          className={`flex gap-3 ${
-                            isMe ? "flex-row-reverse" : ""
-                          }`}
+                          className={`flex gap-3 ${isMe ? "flex-row-reverse" : ""
+                            }`}
                         >
                           <div
-                            className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs ${
-                              isMe ? "bg-[#295A47]" : "bg-blue-500"
-                            }`}
+                            className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs ${isMe ? "bg-[#295A47]" : "bg-blue-500"
+                              }`}
                           >
                             {isMe ? "ME" : msg.sender_id}
                           </div>
-
                           <div
-                            className={`p-3 rounded-lg shadow-sm max-w-[90%] sm:max-w-[80%] ${
-                              isMe
+                            className={`p-3 rounded-lg shadow-sm max-w-[90%] sm:max-w-[80%] ${isMe
                                 ? "bg-[#D7E7D0] rounded-tr-none"
                                 : "bg-white rounded-tl-none"
-                            }`}
+                              }`}
                           >
                             {msg.message && (
                               <p className="text-sm text-gray-800">
                                 {msg.message}
                               </p>
                             )}
-
                             {msg.image_url && (
                               <img
                                 src={msg.image_url}
@@ -1515,18 +1554,18 @@ const ProjectModal = ({
                                 onClick={() => setPreviewImage(msg.image_url)}
                               />
                             )}
-
                             <span className="text-xs text-gray-400 mt-1 block">
-                              {new Date(msg.created_at).toLocaleString(
-                                "en-IN",
-                                {
+                              {(() => {
+                                const date = new Date(msg.created_at.replace(" ", "T"));
+                                return date.toLocaleString("en-IN", {
+                                  timeZone: "UTC",
                                   day: "numeric",
                                   month: "short",
                                   year: "numeric",
                                   hour: "2-digit",
                                   minute: "2-digit",
-                                }
-                              )}
+                                });
+                              })()}
                             </span>
                           </div>
                         </div>
@@ -1540,11 +1579,9 @@ const ProjectModal = ({
                         alt="preview"
                         className="h-16 w-16 object-cover rounded-md border"
                       />
-
                       <span className="text-sm text-gray-600 flex-1 truncate">
                         {selectedImage.name}
                       </span>
-
                       <button
                         onClick={() => setSelectedImage(null)}
                         className="text-red-500 text-sm hover:underline"
@@ -1563,14 +1600,12 @@ const ProjectModal = ({
                         setSelectedImage(e.target.files?.[0] || null)
                       }
                     />
-
                     <label
                       htmlFor="chatImage"
                       className="cursor-pointer text-gray-500 hover:text-[#295A47]"
                     >
                       📎
                     </label>
-
                     <input
                       type="text"
                       placeholder="Type a message..."
@@ -1579,7 +1614,6 @@ const ProjectModal = ({
                       onKeyDown={(e) => e.key === "Enter" && sendChat()}
                       className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#295A47]"
                     />
-
                     <button
                       onClick={sendChat}
                       className="bg-[#295A47] text-white p-2 rounded-lg hover:bg-[#1f4637]"
@@ -1602,13 +1636,17 @@ const ProjectModal = ({
           </div>
         </div>
       </motion.div>
-
       {/* Add Worker Modal */}
       <AddWorkerModal
         show={showAddWorkerModal}
         onClose={() => setShowAddWorkerModal(false)}
-        onAdd={(newWorkerName, newWorkerRole) =>
-          handleAddWorker(newWorkerName, newWorkerRole)
+        onAdd={(newWorkerName, newWorkerRole, newWorkerPhone, imageFile) =>
+          handleAddWorker(
+            newWorkerName,
+            newWorkerRole,
+            newWorkerPhone,
+            imageFile
+          )
         }
       />
       <ExpenseModal
@@ -1661,14 +1699,12 @@ const ProjectModal = ({
             >
               ✕
             </button>
-
             {/* Full Image */}
             <img
               src={previewImage}
               alt="preview"
               className="max-h-[70vh] w-auto mx-auto rounded-lg"
             />
-
             {/* Download Button */}
             <div className="text-center mt-4">
               <a
@@ -1685,5 +1721,4 @@ const ProjectModal = ({
     </div>
   );
 };
-
 export default MyProjectsPage;

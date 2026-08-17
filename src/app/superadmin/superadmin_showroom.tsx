@@ -11,7 +11,9 @@ import {
   RotateCcw,
   Download,
 } from "lucide-react";
-
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
+import { toast } from "react-hot-toast";
 interface Space {
   space_type: string;
   size: string;
@@ -38,8 +40,9 @@ interface ShowroomSpace {
   booking_date: string | null;
   expire_date: string | null;
   updated_at: string | null;
+  invoice_id: string | null;
+  agreement: string | null;
 }
-
 export default function SuperAdminShowroom() {
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -196,7 +199,190 @@ export default function SuperAdminShowroom() {
       setLastPictureMousePos({ x: e.clientX, y: e.clientY });
     }
   };
+  const formatDate = (dateStr: string | null) => {
+  if (!dateStr) return "N/A";
 
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return "N/A";
+
+  return date.toLocaleDateString("en-GB"); 
+  // en-GB → dd/mm/yyyy format
+};
+const handleGenerateInvoice = (space: any) => {
+  if (!space.transaction_proof) {
+    toast.error("Transaction proof required");
+    return;
+  }
+
+  try {
+    const doc = new jsPDF();
+
+    const PAGE_WIDTH = doc.internal.pageSize.width;
+
+    // ================= HEADER =================
+    doc.setFontSize(20);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(41, 90, 71);
+    doc.text("KAYAPALAT", PAGE_WIDTH / 2, 20, { align: "center" });
+
+    doc.setFontSize(11);
+    doc.setTextColor(0);
+    doc.text("Interior Studio Invoice", PAGE_WIDTH / 2, 28, {
+      align: "center",
+    });
+
+    // ================= ADDRESS =================
+    doc.setFontSize(9);
+    doc.setTextColor(80);
+
+    const addressLines = [
+      "Kayapalat Showroom",
+      "1160 Chadpur Poleghat, Mouza 80",
+      "P.O.- Malancha, P.S.- Sonarpur",
+      "Kolkata - 700145",
+      "India",
+    ];
+
+    addressLines.forEach((line, index) => {
+      doc.text(line, PAGE_WIDTH / 2, 34 + index * 5, {
+        align: "center",
+      });
+    });
+
+    // ================= INVOICE INFO =================
+    const invoiceNo = space.invoice_id || "N/A";
+    const date = new Date().toLocaleString("en-IN");
+
+    doc.setFontSize(10);
+    doc.text(`Invoice No: ${invoiceNo}`, 14, 40);
+    doc.text(`Date: ${date}`, PAGE_WIDTH - 14, 40, { align: "right" });
+
+    // ================= CLIENT / DEALER =================
+    doc.setFont("helvetica", "bold");
+    doc.text("Booking Details", 14, 55);
+
+    doc.setFont("helvetica", "normal");
+
+    doc.text(`Company: ${space.client_name || "N/A"}`, 14, 63);
+    doc.text(`Dealer ID: ${space.dealer_id || "N/A"}`, 14, 71);
+    doc.text(`Booking Status: ${space.booking_status || "Available"}`, 14, 79);
+
+    // ================= TABLE =================
+    const tableColumns = [
+      "Space Type",
+      "Size (Sqft)",
+      "Price(Per Sqft)",
+      "Booking Duration (Months)",
+    ];
+
+    const tableRows = [
+      [
+        space.space_type,
+        space.size,
+        `Rs.${space.price?.toLocaleString() || 0}`,
+        space.time_period || "-",
+      ],
+    ];
+
+    autoTable(doc, {
+      head: [tableColumns],
+      body: tableRows,
+      startY: 90,
+      theme: "grid",
+      styles: {
+        fontSize: 9,
+        cellPadding: 3,
+      },
+      headStyles: {
+        fillColor: [41, 90, 71],
+        textColor: 255,
+      },
+    });
+
+    // ================= SUMMARY =================
+    const finalY = (doc as any).lastAutoTable.finalY + 10;
+
+    doc.setFont("helvetica", "bold");
+    doc.text("Payment Summary", 14, finalY);
+
+    doc.setFont("helvetica", "normal");
+
+    doc.text(
+      `Booking Cost: Rs. ${space.booking_cost?.toLocaleString() || 0}`,
+      14,
+      finalY + 8
+    );
+    doc.text(
+      `Advance Paid: Rs. ${space.advance?.toLocaleString() || 0}`,
+      14,
+      finalY + 16
+    );
+    // ✅ SHOW DISCOUNT ONLY IF EXISTS
+    let nextY = finalY + 24;
+
+    if (space.discounted_price != null && space.discounted_price > 0) {
+      doc.text(
+        `Discount: Rs. ${space.discounted_price.toLocaleString()}`,
+        14,
+        nextY
+      );
+      nextY += 8; // shift next line down
+    }
+    doc.text(
+      `Due Amount: Rs. ${space.due?.toLocaleString() || 0}`,
+      14,
+      nextY
+    );
+
+    // ================= DATES =================
+    doc.text(
+      `Booking Date: ${formatDate(space.booking_date)}`,
+      PAGE_WIDTH - 14,
+      finalY + 8,
+      { align: "right" }
+    );
+
+    doc.text(
+      `Expiry Date: ${formatDate(space.expire_date)}`,
+      PAGE_WIDTH - 14,
+      finalY + 16,
+      { align: "right" }
+    );
+
+    // ================= FOOTER =================
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.text(
+      "Thank you for your business!",
+      PAGE_WIDTH / 2,
+      finalY + 40,
+      { align: "center" }
+    );
+
+    doc.setFont("helvetica", "normal");
+    doc.text(
+      "Terms & Conditions: Booking once confirmed is non-refundable.",
+      PAGE_WIDTH / 2,
+      finalY + 48,
+      { align: "center" }
+    );
+
+    doc.text(
+      `Generated on ${new Date().toLocaleString("en-IN")}`,
+      PAGE_WIDTH / 2,
+      finalY + 56,
+      { align: "center" }
+    );
+
+    // ================= SAVE =================
+    doc.save(`Showroom_Invoice_${space.space_type}_${Date.now()}.pdf`);
+
+    toast.success("Invoice generated successfully!");
+  } catch (error) {
+    console.error(error);
+    toast.error("Failed to generate invoice");
+  }
+};
   const handlePictureMouseMove = (e: React.MouseEvent) => {
     if (isPictureDragging && pictureZoom > 1) {
       const deltaX = e.clientX - lastPictureMousePos.x;
@@ -256,11 +442,23 @@ export default function SuperAdminShowroom() {
         if (i === index) {
           const updatedSpace = { ...space, [field]: value };
           if (field === "special_discount") {
-            const discountPercent = parseFloat(value as string) || 0;
+            const isBlank = value === "";
+            const discountPercent = isBlank ? 0 : (parseFloat(value as string) || 0);
             const bookingCost = updatedSpace.booking_cost || 0;
+            const advance = updatedSpace.advance || 0;
             const discountAmount = (discountPercent / 100) * bookingCost;
-            updatedSpace.discounted_price = discountAmount;
-            updatedSpace.deal_price = bookingCost - discountAmount;
+            updatedSpace.special_discount = isBlank ? null : (value as string);
+            updatedSpace.discounted_price = isBlank ? null : discountAmount;
+            updatedSpace.deal_price = isBlank ? null : (bookingCost - discountAmount);
+            updatedSpace.due = bookingCost - advance - (isBlank ? 0 : discountAmount);
+          } else if (field === "advance") {
+            const isBlank = value === "" || value === null;
+            const advanceValue = isBlank ? 0 : parseFloat(value as string);
+            const dealPrice = updatedSpace.deal_price;
+            const bookingCost = updatedSpace.booking_cost || 0;
+
+            const baseForDue = dealPrice !== null ? dealPrice : bookingCost;
+            updatedSpace.due = baseForDue - advanceValue;
           }
           return updatedSpace;
         }
@@ -300,7 +498,11 @@ export default function SuperAdminShowroom() {
     setIsUpdating(true);
     try {
       const space = editedShowroomSpaces[index];
-      const updates = { [field]: space[field] };
+      let value = space[field];
+      if (field === "special_discount") {
+        value = parseFloat(value as string) || 0;
+      }
+      const updates = { [field]: value };
       const response = await fetch("/api/superadmin/showroom", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -327,7 +529,72 @@ export default function SuperAdminShowroom() {
       )
     );
   };
+  const handleAutoUpdate = async (
+    index: number,
+    field: keyof ShowroomSpace,
+    value: any
+  ) => {
+    try {
+      const space = editedShowroomSpaces[index];
 
+      let updatedSpace = { ...space, [field]: value };
+
+      // ✅ If special discount changes → recalculate
+      if (field === "special_discount") {
+        const isBlank = value === "";
+        const discountPercent = isBlank ? 0 : (parseFloat(value) || 0);
+        const bookingCost = updatedSpace.booking_cost || 0;
+        const advance = updatedSpace.advance || 0;
+
+        const discountAmount = (discountPercent / 100) * bookingCost;
+        const dealPrice = isBlank ? null : (bookingCost - discountAmount);
+        // If discount is cleared, due should be calculated from base booking cost
+        const due = (isBlank ? bookingCost : (dealPrice || 0)) - advance;
+
+        updatedSpace.special_discount = isBlank ? null : value;
+        updatedSpace.discounted_price = isBlank ? null : discountAmount;
+        updatedSpace.deal_price = dealPrice;
+        updatedSpace.due = due;
+      } else if (field === "advance") {
+        const isBlank = value === "" || value === null;
+        const advanceValue = isBlank ? 0 : parseFloat(value);
+        const dealPrice = updatedSpace.deal_price;
+        const bookingCost = updatedSpace.booking_cost || 0;
+
+        const baseForDue = dealPrice !== null ? dealPrice : bookingCost;
+        updatedSpace.due = baseForDue - advanceValue;
+        updatedSpace.advance = isBlank ? null : advanceValue;
+      }
+
+      // ✅ Update UI instantly
+      setEditedShowroomSpaces((prev) =>
+        prev.map((s, i) => (i === index ? updatedSpace : s))
+      );
+
+      // ✅ API Call (NO Save button needed)
+      const response = await fetch("/api/superadmin/showroom", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          space_id: updatedSpace.space_id,
+          special_discount: updatedSpace.special_discount === null ? null : parseFloat(updatedSpace.special_discount),
+          discounted_price: updatedSpace.discounted_price,
+          deal_price: updatedSpace.deal_price,
+          due: updatedSpace.due,
+          advance: updatedSpace.advance,
+        }),
+      });
+
+      if (response.ok) {
+        setShowroomSpaces((prev) =>
+          prev.map((s, i) => (i === index ? { ...updatedSpace } : s))
+        );
+      }
+
+    } catch (error) {
+      console.error("Auto update failed:", error);
+    }
+  };
   return (
     <>
       <style>{`
@@ -537,13 +804,23 @@ export default function SuperAdminShowroom() {
             </h2>
             <div className="overflow-x-auto rounded-lg border border-gray-200">
               <table className="min-w-full table-auto">
-                <thead>
+                <thead className="sticky top-0 z-20">
                   <tr className="bg-gradient-to-r from-green-900 to-green-600 text-white">
-                    <th className="px-6 py-4 text-center font-semibold text-sm uppercase tracking-wider">
+                    <th className="sticky left-0 z-30 bg-green-900 px-6 py-4 text-center font-semibold text-sm uppercase">
                       Space Type
                     </th>
-                    <th className="px-6 py-4 text-center font-semibold text-sm uppercase tracking-wider">
+
+                    <th className="sticky left-[180px] z-30 bg-green-900 px-6 py-4 text-center font-semibold text-sm uppercase">
                       Booking Status
+                    </th>
+                    <th className="px-6 py-4 text-center font-semibold text-sm uppercase tracking-wider">
+                      Generate Invoice
+                    </th>
+                    <th className="px-6 py-4 text-center font-semibold text-sm uppercase tracking-wider">
+                      Transaction Proof
+                    </th>
+                    <th className="px-6 py-4 text-center font-semibold text-sm uppercase tracking-wider">
+                      Agreement
                     </th>
                     <th className="px-6 py-4 text-center font-semibold text-sm uppercase tracking-wider">
                       Size (Sqft)
@@ -584,15 +861,13 @@ export default function SuperAdminShowroom() {
                     <th className="px-6 py-4 text-center font-semibold text-sm uppercase tracking-wider">
                       Expire Date
                     </th>
-                    <th className="px-6 py-4 text-center font-semibold text-sm uppercase tracking-wider">
-                      Transaction Proof
-                    </th>
+                    
                   </tr>
                 </thead>
                 <tbody>
                   {editedShowroomSpaces.map((space, index) => (
                     <tr key={index} className="hover:bg-gray-50">
-                      <td className="border border-gray-300 px-4 py-2">
+                      <td className="sticky left-0 z-20 bg-white border px-4 py-2">
                         <div className="flex items-center space-x-2">
                           <input
                             type="text"
@@ -632,7 +907,7 @@ export default function SuperAdminShowroom() {
                           )}
                         </div>
                       </td>
-                      <td className="border border-gray-300 px-4 py-2">
+                      <td className="sticky left-[180px] z-20 bg-white border px-4 py-2">
                         <div className="flex items-center space-x-2">
                           <select
                             value={space.booking_status || ""}
@@ -643,12 +918,21 @@ export default function SuperAdminShowroom() {
                                 e.target.value || null
                               )
                             }
-                            className="flex-1 px-2 py-1 border rounded"
+                            className={`flex-1 px-2 py-1 border rounded text-white font-medium
+                              ${
+                                space.booking_status === "confirmed"
+                                  ? "bg-red-500 border-red-600"
+                                  : space.booking_status === "pending"
+                                  ? "bg-yellow-400 border-yellow-500 text-black"
+                                  : "bg-green-500 border-green-600"
+                              }
+                            `}
                           >
                             <option value="">Available</option>
                             <option value="pending">Pending</option>
                             <option value="confirmed">Confirmed</option>
                           </select>
+
                           {isFieldModified(index, "booking_status") && (
                             <>
                               <button
@@ -674,6 +958,46 @@ export default function SuperAdminShowroom() {
                             </>
                           )}
                         </div>
+                      </td>
+                      <td className="border border-gray-300 px-4 py-2 text-center">
+                        <button
+                          onClick={() => handleGenerateInvoice(space)}
+                          disabled={!space.transaction_proof}
+                          className={`px-3 py-1 rounded text-sm font-medium transition ${
+                            space.transaction_proof
+                              ? "bg-red-500 text-white hover:bg-red-600"
+                              : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                          }`}
+                        >
+                          Invoice
+                        </button>
+                      </td>
+                      <td className="border border-gray-300 px-4 py-2">
+                        {space.transaction_proof ? (
+                          <button
+                            onClick={() => openModal(space.transaction_proof!)}
+                            className="text-blue-600 hover:text-blue-800 underline"
+                          >
+                            View Proof
+                          </button>
+                        ) : (
+                          <span className="text-gray-500">No Proof</span>
+                        )}
+                      </td>
+                      <td className="border border-gray-300 px-4 py-2 text-center">
+                        {space.agreement ? (
+                          <a
+                            href={space.agreement}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition text-sm"
+                            download
+                          >
+                            Download
+                          </a>
+                        ) : (
+                          <span className="text-gray-400">No Agreement</span>
+                        )}
                       </td>
                       <td className="border border-gray-300 px-4 py-2">
                         <div className="flex items-center space-x-2">
@@ -869,46 +1193,14 @@ export default function SuperAdminShowroom() {
                           )}
                         </div>
                       </td>
-                                            <td className="border border-gray-300 px-4 py-2">
+                      <td className="border border-gray-300 px-4 py-2">
                         <div className="flex items-center space-x-2">
                           <input
                             type="number"
                             value={space.advance || ""}
-                            onChange={(e) =>
-                              handleFieldChange(
-                                index,
-                                "advance",
-                                e.target.value
-                                  ? parseFloat(e.target.value)
-                                  : null
-                              )
-                            }
+                            onChange={(e) => handleAutoUpdate(index, "advance", e.target.value)}
                             className="flex-1 px-2 py-1 border rounded no-spinner"
                           />
-                          {isFieldModified(index, "advance") && (
-                            <>
-                              <button
-                                onClick={() =>
-                                  handleSaveField(index, "advance")
-                                }
-                                disabled={isUpdating}
-                                className="text-green-600 hover:text-green-800 disabled:opacity-50"
-                                title="Save"
-                              >
-                                <Check size={16} />
-                              </button>
-                              <button
-                                onClick={() =>
-                                  handleRevertField(index, "advance")
-                                }
-                                disabled={isUpdating}
-                                className="text-red-600 hover:text-red-800 disabled:opacity-50"
-                                title="Revert"
-                              >
-                                <RotateCcw size={16} />
-                              </button>
-                            </>
-                          )}
                         </div>
                       </td>
                       <td className="border border-gray-300 px-4 py-2">
@@ -955,38 +1247,10 @@ export default function SuperAdminShowroom() {
                             type="text"
                             value={space.special_discount || ""}
                             onChange={(e) =>
-                              handleFieldChange(
-                                index,
-                                "special_discount",
-                                e.target.value || null
-                              )
+                              handleAutoUpdate(index, "special_discount", e.target.value)
                             }
                             className="flex-1 px-2 py-1 border rounded"
                           />
-                          {isFieldModified(index, "special_discount") && (
-                            <>
-                              <button
-                                onClick={() =>
-                                  handleSaveField(index, "special_discount")
-                                }
-                                disabled={isUpdating}
-                                className="text-green-600 hover:text-green-800 disabled:opacity-50"
-                                title="Save"
-                              >
-                                <Check size={16} />
-                              </button>
-                              <button
-                                onClick={() =>
-                                  handleRevertField(index, "special_discount")
-                                }
-                                disabled={isUpdating}
-                                className="text-red-600 hover:text-red-800 disabled:opacity-50"
-                                title="Revert"
-                              >
-                                <RotateCcw size={16} />
-                              </button>
-                            </>
-                          )}
                         </div>
                       </td>
                       <td className="border border-gray-300 px-4 py-2">
@@ -994,41 +1258,18 @@ export default function SuperAdminShowroom() {
                           <input
                             type="number"
                             value={space.discounted_price || ""}
-                            onChange={(e) =>
-                              handleFieldChange(
-                                index,
-                                "discounted_price",
-                                e.target.value
-                                  ? parseFloat(e.target.value)
-                                  : null
-                              )
-                            }
+                            // onChange={(e) =>
+                            //   handleFieldChange(
+                            //     index,
+                            //     "discounted_price",
+                            //     e.target.value
+                            //       ? parseFloat(e.target.value)
+                            //       : null
+                            //   )
+                            // } 
+                            readOnly
                             className="flex-1 px-2 py-1 border rounded no-spinner"
                           />
-                          {isFieldModified(index, "discounted_price") && (
-                            <>
-                              <button
-                                onClick={() =>
-                                  handleSaveField(index, "discounted_price")
-                                }
-                                disabled={isUpdating}
-                                className="text-green-600 hover:text-green-800 disabled:opacity-50"
-                                title="Save"
-                              >
-                                <Check size={16} />
-                              </button>
-                              <button
-                                onClick={() =>
-                                  handleRevertField(index, "discounted_price")
-                                }
-                                disabled={isUpdating}
-                                className="text-red-600 hover:text-red-800 disabled:opacity-50"
-                                title="Revert"
-                              >
-                                <RotateCcw size={16} />
-                              </button>
-                            </>
-                          )}
                         </div>
                       </td>
                       <td className="border border-gray-300 px-4 py-2">
@@ -1036,41 +1277,18 @@ export default function SuperAdminShowroom() {
                           <input
                             type="number"
                             value={space.deal_price || ""}
-                            onChange={(e) =>
-                              handleFieldChange(
-                                index,
-                                "deal_price",
-                                e.target.value
-                                  ? parseFloat(e.target.value)
-                                  : null
-                              )
-                            }
+                            // onChange={(e) =>
+                            //   handleFieldChange(
+                            //     index,
+                            //     "deal_price",
+                            //     e.target.value
+                            //       ? parseFloat(e.target.value)
+                            //       : null
+                            //   )
+                            // }
+                            readOnly
                             className="flex-1 px-2 py-1 border rounded no-spinner"
                           />
-                          {isFieldModified(index, "deal_price") && (
-                            <>
-                              <button
-                                onClick={() =>
-                                  handleSaveField(index, "deal_price")
-                                }
-                                disabled={isUpdating}
-                                className="text-green-600 hover:text-green-800 disabled:opacity-50"
-                                title="Save"
-                              >
-                                <Check size={16} />
-                              </button>
-                              <button
-                                onClick={() =>
-                                  handleRevertField(index, "deal_price")
-                                }
-                                disabled={isUpdating}
-                                className="text-red-600 hover:text-red-800 disabled:opacity-50"
-                                title="Revert"
-                              >
-                                <RotateCcw size={16} />
-                              </button>
-                            </>
-                          )}
                         </div>
                       </td>
                       <td className="border border-gray-300 px-4 py-2">
@@ -1193,18 +1411,7 @@ export default function SuperAdminShowroom() {
                           )}
                         </div>
                       </td>
-                      <td className="border border-gray-300 px-4 py-2">
-                        {space.transaction_proof ? (
-                          <button
-                            onClick={() => openModal(space.transaction_proof!)}
-                            className="text-blue-600 hover:text-blue-800 underline"
-                          >
-                            View Proof
-                          </button>
-                        ) : (
-                          <span className="text-gray-500">No Proof</span>
-                        )}
-                      </td>
+                      
                     </tr>
                   ))}
                 </tbody>
